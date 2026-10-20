@@ -103,7 +103,8 @@ How the app needs are met with ZERO schema changes:
   Notes: TEST-ONLY (D-060): the checker already existed in the pre-roadmap tree (D-023) and is
   accepted as-is; guard tests at `tests/auth/test_credentials.py` (5). No `db/examples` script
   covers this step.
-- [ ] **4.2** JWT issue and verify (PyJWT, 72h, access token only) and the FastAPI `current_actor` dependency. needs: 4.1
+- [x] **4.2** JWT issue and verify (PyJWT, 72h, access token only) and the FastAPI `current_actor` dependency. needs: 4.1
+  Notes: CODE-WITH-TESTS (D-062): the token service, route dependency and most tests pre-existed (D-023) and the 7 new guards were green at once, so /code only applied the approved `current_user` -> `current_actor` rename (auth/api/dependencies.py, ledger/api/router.py); guards: missing `sub`, missing `exp`, HS512 algorithm pinning, claim set `{sub,iat,exp}`, expired/forged/non-bearer 401s (tests/auth/test_tokens.py, tests/auth/test_current_actor.py). No `db/examples` script covers this step.
 - [ ] **4.3** App factory, RFC 9457 problem-JSON error handlers, `POST /api/v1/auth/login` and API tests. needs: 4.2 [P-002]
 
 ## Phase 5: Envelopes and cost centers [P-009]

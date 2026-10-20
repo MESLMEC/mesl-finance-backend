@@ -326,3 +326,21 @@ Gates this session: `uv run pytest` 126 passed (120 pre-existing + 6 new, all gr
 ### Evidence for the step close
 
 Gates this session: `uv run pytest` 138 passed (133 pre-existing + 5 new); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "78 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit PASS on all eight items (scope, library args, SQL names, layering, SQL safety, no stubs, unwritten facts, gates).
+
+## Added 2026-10-21 (twentieth batch, step 4.2 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-062 | 2026-10-21 | Step 4.2 shape: Q1-Q3 were left unanswered, so the brief's labelled suggestions stand — (Q1=a) rename the route dependency `current_user` -> `current_actor` (the roadmap's name; 2 lines in `auth/api/dependencies.py` and `ledger/api/router.py`), (Q2=a) the seven guard tests as listed in the brief, (Q3=a) the dependency tests in a NEW file `tests/auth/test_current_actor.py`. Because the approved tests passed at once (the JWT service, dependency and their earlier tests pre-existed per D-023), option 1 of the `/code` brief stands: they are accepted as green guard tests and `/code` performs only the rename. | "The user approved the step brief for: go (if empty, the step briefed earlier in this session)." then "Write the smallest code that makes the approved tests pass." | ROADMAP 4.2, D-023, D-006, D-060 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-063 (proposed) | 2026-10-21 | PyJWT 2.15.1 details behind the 4.2 guards: `jwt.encode` converts `exp`/`iat`/`nbf` `datetime` values to intDate, so `JwtTokenService` may pass datetimes; `options={"require": ["exp","sub"]}` makes a token missing either claim raise `MissingRequiredClaimError`; an HS512 token decoded with `algorithms=["HS256"]` raises `InvalidAlgorithmError`; every one of these is a `PyJWTError` subclass, so `tokens.py`'s single `except jwt.PyJWTError` maps them all to `InvalidToken`. HMAC keys shorter than the SHA-512 digest size (64 bytes) trigger `InsecureKeyLengthWarning`, so the HS512 guard signs and verifies with an 81-byte secret. Full suite 145 passed (138 + 7). | `.venv/lib/python3.15/site-packages/jwt/api_jwt.py:92-100,126-141,176-196,384-433`; `jwt/exceptions.py:1-12,65,71`; gates run 2026-10-21 |
+
+### Evidence for the step close
+
+Gates this session: `uv run pytest` 145 passed (138 pre-existing + 7 new); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "79 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit result: item 7 FAIL until this batch was appended; all other seven items PASS.
