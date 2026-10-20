@@ -16,7 +16,8 @@ but read-only exploration until the user answers. Never fill a gap with a "reaso
 Never write placeholder / TODO / stub code to get past a gap.
 
 Mandatory stop triggers:
-- a business rule that is not in db/schema.sql, a ticked BUSINESS.md line, or a confirmed DECISIONS.md entry
+- a business rule that is not in the database schema (`db/schema.sql` / later `db/sql/` payloads),
+  a ticked BUSINESS.md line, or a confirmed DECISIONS.md entry
 - a library function or option you have not seen in installed source/official docs this session
 - a need to change the database schema (report: `DB change needed: X; alternative: Y`; write nothing)
 - two sources disagree (user vs file, file vs file, test vs schema)
@@ -33,10 +34,13 @@ Mandatory stop triggers:
 | `DECISIONS.md` | decisions, their status, open questions | append only (see below) |
 | `BUSINESS.md` | the lab's business rules; only TICKED lines are authoritative | the user ticks; you propose |
 | `ROADMAP.md` | the plan and progress, one step = one session = one commit | you tick a step after all gates pass |
-| `db/schema.sql`, `db/examples/` | database truth and its acceptance spec | never edited |
+| `db/schema.sql` | revision 0001's payload: the initial schema, executed in place | never edited (guarded by `tests/test_schema_hash.py`) |
+| `db/sql/NNN_*.sql`, `alembic/versions/NNN_*.py` | the migration history after 0001: one hand-written payload + one thin revision per approved change | append only: new files; committed migrations never edited |
+| `db/examples/` | the database's acceptance spec, ported into `tests/` just in time | never edited |
 
 Authority when sources conflict (highest first): the user's words in this session; confirmed
-DECISIONS.md entries; db/schema.sql and db/examples; ticked BUSINESS.md lines; ROADMAP.md; this
+DECISIONS.md entries; the migration chain (`db/schema.sql` is its 0001 payload; `db/sql/` and
+`alembic/versions/` are its history) and db/examples; ticked BUSINESS.md lines; ROADMAP.md; this
 file. Entries marked `proposed` are NOT authority: ask the user to confirm or reject them.
 
 Writing rules:
@@ -74,10 +78,12 @@ Do only the step in hand. Never start the next step.
   or the official docs (webfetch, which asks the user first) BEFORE writing the call. Do not use a
   function, argument or behaviour you have not seen this session. Versions come from `pyproject.toml`
   and `uv.lock`, never from memory.
-- **SQL names** (tables, columns, functions, constraints, enum values): only from `db/schema.sql`.
-  Search it. Real-database tests are the final check.
+- **SQL names** (tables, columns, functions, constraints, enum values): only from `db/schema.sql`
+  and later `db/sql/` payloads. Search them. Real-database tests are the final check.
 - **OpenCode v2.0.29 here has no LSP and does not run formatters.** You run `uv run pyright` and
   `uv run ruff` yourself after changes.
+- Tool names in OpenCode v2 are `shell` (never `bash`), `edit`/`write`/`patch`, `read`, `grep`, `glob`.
+  If a tool is missing or a call is refused: STOP and report the exact error. Do not probe.
 
 ## 4. Architecture (strict clean architecture, feature folders)
 
@@ -108,6 +114,23 @@ src/mesl_finance/
 - `allocate()` and `sweep_leftover()` run with the caller's rights (not SECURITY DEFINER).
   `reconcile()` and `close_tenure()` are SECURITY DEFINER. `close_tenure` is granted to `labapp` only.
 - Ledger rows are never updated or deleted. Corrections are reversal + replacement in ONE transaction.
+
+### Schema changes and the migration convention (D-018, D-031)
+
+- The Alembic chain in `alembic/versions/` is the migration history. `alembic upgrade head` applies it
+  in revision order as the owner (`MESL_ADMIN_DATABASE_URL`); tests build their template with it.
+- `db/schema.sql` is revision 0001's payload. It is executed in place and never edited; the sha256 guard
+  (`tests/test_schema_hash.py`) catches any change. 0001 has no downgrade.
+- Zero schema changes by default. A change needs explicit user approval FIRST: report
+  `DB change needed: X; alternative: Y`, write nothing until the user agrees and a roadmap step exists.
+- Once approved, one change = two new files, one migration:
+  1. `db/sql/NNN_<slug>.sql`: the SQL payload, written by hand.
+  2. `alembic/versions/NNN_<slug>.py`: a thin revision with the same `NNN` and slug; `down_revision`
+     is the previous revision; it reads the payload by path and executes it whole on the raw asyncpg
+     connection inside `async with raw.transaction():`, exactly like `0001_initial.py` (D-031). No
+     statement splitter.
+- Payloads and revisions are append-only: never edit a committed migration; correct it with a new revision.
+- No `autogenerate` and no model metadata: the SQL is the truth.
 
 ## 6. Test-driven development and gates
 

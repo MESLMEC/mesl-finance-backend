@@ -179,3 +179,20 @@ a generated document; NOT authority until the user confirms. Dates are YYYY-MM-D
 | ID | Date | Fact | Evidence |
 |---|---|---|---|
 | D-035 (proposed) | 2026-10-20 | D-032 did not reproduce during step 1.5: `TEST_ADMIN_DSN` was set in the agent subshell and host port 5434 was listening, so the agent ran the full suite (51 passed). Later the harness removed the `shell` tool from the agent catalog mid-session, so the closing gates were run by the user (51 passed in 4.77s; ruff/format/pyright green). A missing tool in the agent catalog is a harness gap to report, not a code failure. | `ss`/env probe this session; user-pasted gate run; `No tool named "shell" is currently available` |
+
+## Added 2026-10-20 (tenth batch, step 1.6). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-036 | 2026-10-20 | Step 1.6 convention approved as drafted in the step brief: the Alembic chain is the migration history; `db/schema.sql` is revision 0001's payload and is never edited; after 0001 each approved schema change is one hand-written payload `db/sql/NNN_<slug>.sql` plus one thin revision `alembic/versions/NNN_<slug>.py` (same NNN and slug, starting at 0002) that executes the payload whole on the raw asyncpg connection inside `async with raw.transaction():` (D-031); payloads and revisions are append-only; no autogenerate. `db/sql/` is created now with a `.gitkeep`; per-payload sha256 guards are deferred to the first real migration. The exact AGENTS.md wording was approved as drafted (section 0, section 1 table and authority order, section 3, new section 5 subsection). | "6b, 7b, rest as you suggested. go." (Q1=a, Q2=a, Q3=a, Q4=a, Q5=a) | D-018, D-031, ROADMAP 1.6 |
+| D-037 | 2026-10-20 | Step 1.6 also repoints the two stale SQL-source lines in `.opencode/commands/code.md` and `.opencode/commands/review.md`, and grants the coder agent edit permission for `AGENTS.md` and `DECISIONS.md` in `.opencode/agents/coder.md` so the approved wording can be applied; specific allow rules stay before the catch-all deny (D-028). The stale `alembic.ini` comment and the `alembic/env.py` docstring stay untouched (D-033). | "6b, 7b, rest as you suggested. go." | D-028, D-033, ROADMAP 1.6 |
+
+## Added 2026-10-20 (eleventh batch, step 1.6 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-038 | 2026-10-20 | Step 1.6 closes with the reviewer permission fix: `.opencode/agents/reviewer.md` keeps `shell "*"` allowed (needed to run the four gates) and restores `edit "*"` to `deny`, so the reviewer stays read-only as its description and AGENTS.md section 2 require. D-036/D-037 stand unchanged. The tool-name rule requested this session is now AGENTS.md section 3 ("`shell` (never `bash`) ... If a tool is missing or a call is refused: STOP and report the exact error. Do not probe."). | "i allowed shell for you" and "add those permission fixes too in this commit" | D-027, D-037, ROADMAP 1.6 |

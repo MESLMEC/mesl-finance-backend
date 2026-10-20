@@ -30,8 +30,11 @@ permissions:
     resource: "ROADMAP.md"
     effect: ask
   - action: edit
+    resource: "AGENTS.md"
+    effect: allow
+  - action: edit
     resource: "DECISIONS.md"
-    effect: ask
+    effect: allow
   - action: edit
     resource: "*"
     effect: deny
