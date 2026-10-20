@@ -239,3 +239,17 @@ a generated document; NOT authority until the user confirms. Dates are YYYY-MM-D
 | D-048 | 2026-10-20 | `shared/errors.py` (which already existed in the pre-roadmap guide tree, D-023) is accepted AS-IS and is FROZEN: step 2.1 adds only guard tests; a later step may add a new error only together with its test (same rule as the error translator). | "a a a(ask me in details, no migration, cant we change code term? or will that be catastrophic?)" (brief Q1/Q2 answered a/a) and "2. a" | ROADMAP 2.1, D-023 |
 | D-049 | 2026-10-20 | Approved exception to "the coder cannot edit tests/": a mechanical FORMATTER fix (E501 line-wrap of two test signatures, zero behaviour change, proven by pytest green) inside `tests/shared/test_errors.py` done by the coder with explicit user approval. Other test edits stay tester-domain. | "1" (option 1 = "approve me making that mechanical reformat ... no logic touched") | AGENTS.md section 2, D-042 |
 | D-050 | 2026-10-20 | In this session's harness catalog there is NO `edit`/`write`/`patch` tool. Files were written through `shell` heredocs (reported at the time, never probed). If a future session's catalog regains an edit tool, prefer it. | Tool-catalog listing at session start (no edit tool); D-027-style stop not triggered because `shell` was available and no permission refusal occurred | AGENTS.md section 3 |
+
+## Added 2026-10-21 (fifteenth batch, step 2.2). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-051 | 2026-10-21 | Step 2.2 shape approved: CODE-WITH-TESTS with four guard tests in `tests/shared/test_ports.py`; both ports `@runtime_checkable`; `Clock` has a single method `now() -> datetime` returning a timezone-aware UTC instant (Q4=a); the shared `UnitOfWork` Protocol holds transaction scope (`__aenter__`/`__aexit__`, `commit`) plus an `actor` property ONLY — repository accessors are declared by each feature's own protocol (Q3=a); the ledger's `LedgerUnitOfWork` is refactored to extend the shared protocol and any pre-existing duplication is removed (Q2=a); the `SqlUnitOfWork` vs ROADMAP 3.2 naming question is deferred to 3.2's `/start` (Q5=a). Tests were separately reviewed and approved. | "The user approved the step brief for: all suggestions accepted. go (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for: (if empty, the step in this session)." | ROADMAP 2.2, D-002, D-009 |
+
+### Discovered facts / proposals (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-052 (proposed) | 2026-10-21 | Naming mismatch parked per D-051 Q5=a: ROADMAP 3.2 names the future concrete unit of work `SqlAlchemyUnitOfWork`, but the existing concrete class is `SqlUnitOfWork` (`src/mesl_finance/shared/infrastructure/database.py:21`), now exposing a read-only `actor` property (added step 2.2, +5 lines, so `SqlLedgerUnitOfWork` structurally satisfies the shared port that `main.py`'s factory lambda must conform to). Resolve at 3.2's `/start`: adopt the roadmap name in a rename commit, or amend the roadmap wording. | Step 2.2 review finding (reviewer item 7, FAIL then fixed by this entry); `git diff --stat` showed database.py +5/-0; tester/coder reports this session |

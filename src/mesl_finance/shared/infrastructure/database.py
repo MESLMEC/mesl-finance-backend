@@ -32,6 +32,11 @@ class SqlUnitOfWork:
         self._conn: AsyncConnection | None = None
         self._tx: AsyncTransaction | None = None
 
+    @property
+    def actor(self) -> str:
+        """The actor this transaction runs as (the `app.actor` value)."""
+        return self._actor
+
     async def __aenter__(self) -> Self:
         self._conn = await self._engine.connect()
         self._tx = await self._conn.begin()

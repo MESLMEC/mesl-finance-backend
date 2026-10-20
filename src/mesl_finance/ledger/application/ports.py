@@ -1,7 +1,7 @@
-from types import TracebackType
 from typing import Protocol
 
 from mesl_finance.ledger.domain.deposit import Deposit
+from mesl_finance.shared.ports import UnitOfWork
 
 
 class LedgerRepository(Protocol):
@@ -14,17 +14,8 @@ class LedgerRepository(Protocol):
         ...
 
 
-class LedgerUnitOfWork(Protocol):
+class LedgerUnitOfWork(UnitOfWork, Protocol):
+    """The ledger's transaction scope: the shared scope plus its repository."""
+
     @property
     def ledger(self) -> LedgerRepository: ...
-
-    async def __aenter__(self) -> "LedgerUnitOfWork": ...
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        tb: TracebackType | None,
-    ) -> None: ...
-
-    async def commit(self) -> None: ...
