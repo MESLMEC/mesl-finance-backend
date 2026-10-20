@@ -44,10 +44,10 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 0: Repo and tooling baseline
 
-- [ ] **0.1** `git init`; extend `.gitignore` (`.env`, `dist/`, `*.orig`); the user commits the current tree. needs: none
-- [ ] **0.2** Add dev dependency `asyncpg-stubs`. needs: 0.1
-- [ ] **0.3** Fix the ruff findings in `tests/db/test_ledger_contract.py`; format the unformatted files. needs: 0.1
-- [ ] **0.4** Pyright strict-clean, including `tests/conftest.py`. needs: 0.2, 0.3
+- [x] **0.1** `git init`; extend `.gitignore` (`.env`, `dist/`, `*.orig`); the user commits the current tree. needs: none
+- [x] **0.2** Add dev dependency `asyncpg-stubs`. needs: 0.1
+- [x] **0.3** Fix the ruff findings in `tests/db/test_ledger_contract.py`; format the unformatted files. needs: 0.1
+- [x] **0.4** Pyright strict-clean, including `tests/conftest.py`. needs: 0.2, 0.3
 - [ ] **0.5** `src/mesl_finance/shared/settings.py` (pydantic-settings): app DSN, admin DSN, JWT secret, JWT TTL (72h), treasurer username, argon2 hash, timezone (Asia/Dhaka); plus `.env.example`. needs: 0.4
 - [ ] **0.6** Run every raw `db/examples/*.sql` against PostgreSQL 18: every `EXPECT FAIL` still errors, every expectation still holds. Report differences; change nothing. needs: 0.1 [P-007]
 
