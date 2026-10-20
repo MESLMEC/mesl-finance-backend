@@ -2,12 +2,6 @@
 description: Read-only auditor. Checks a finished step against the rules and reports PASS or FAIL. Edits nothing.
 mode: all
 permissions:
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "*"
-    effect: deny
   - action: shell
     resource: "uv run pytest*"
     effect: allow
@@ -26,4 +20,10 @@ permissions:
   - action: shell
     resource: "git log*"
     effect: allow
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: deny
 ---
