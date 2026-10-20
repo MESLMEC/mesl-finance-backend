@@ -127,6 +127,7 @@ def settings(db: TestDb) -> Settings:
         jwt_secret=SecretStr(JWT_SECRET),
         auth_username=USERNAME,
         auth_password_hash=SecretStr(low_cost_hasher.hash(PASSWORD)),
+        admin_database_url=SecretStr(ADMIN_DSN),
         _env_file=None,  # pyright: ignore[reportCallIssue]
     )
 

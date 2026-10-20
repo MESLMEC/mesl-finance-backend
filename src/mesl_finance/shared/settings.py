@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="MESL_", env_file=".env", extra="ignore")
 
     database_url: str  # postgresql+asyncpg://labapp:...@host:5432/dbname  (the limited app role)
+    admin_database_url: SecretStr  # owner/superuser DSN; migrations, bootstrap and tests only
     jwt_secret: SecretStr
     jwt_ttl_hours: int = 72
     auth_username: str
