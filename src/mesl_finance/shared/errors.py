@@ -35,6 +35,11 @@ class DateBeforeTenure(RuleViolation):
     title = "Date is before the tenure opened"
 
 
+class Unique(RuleViolation):
+    code = "unique"
+    title = "Already exists"
+
+
 class Unauthorized(DomainError):
     code = "unauthorized"
     title = "Authentication required"

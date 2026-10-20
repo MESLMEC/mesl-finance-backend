@@ -90,7 +90,12 @@ How the app needs are met with ZERO schema changes:
   accepted as-is; guard tests at `tests/shared/test_unit_of_work.py` (6 tests). The name stays
   `SqlUnitOfWork` (D-055 Q1=b resolves D-052). Error mapping inside execute/commit stays step
   3.3 territory (brief Q3=a). No db/examples script covers this step (no P-007 port).
-- [ ] **3.3** The single error translator (infrastructure only): `RaiseError`, unique and foreign-key violations, constraint names, and commit-time raises to typed domain errors. Each rule is added with the test that needs it. needs: 2.1, 3.2
+- [x] **3.3** The single error translator (infrastructure only): `RaiseError`, unique and foreign-key violations, constraint names, and commit-time raises to typed domain errors. Each rule is added with the test that needs it. needs: 2.1, 3.2
+  Notes: CODE-WITH-TESTS; /code added only the 23505 branch + the new `Unique` error (brief Q1=b);
+  the P0001/23503/commit-time/event-bypass rules predated this step (D-023) and the 5 green tests pin
+  them (tests/shared/test_error_translator.py). The constraint name reaches the detail inside the
+  server's own 23505 message text (confirmed live: `envelopes_name_key`); no per-constraint-name
+  table (Q2 standing suggestion).
 
 ## Phase 4: Auth (D-006)
 

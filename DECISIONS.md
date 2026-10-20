@@ -295,3 +295,13 @@ Gates this session: `uv run pytest` 120 passed (115 pre-existing + 5 new, all gr
 ### Evidence for the step close
 
 Gates this session: `uv run pytest` 126 passed (120 pre-existing + 6 new, all green throughout — final re-run also 126 passed); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "76 files already formatted"; `uv run pyright` "0 errors, 0 informations". Audit found no defect (reviewer PASS; the wrapup notes this batch records are: the ROADMAP 3.2 tick + wording amendment, D-055, D-052 resolution, D-057).
+
+## Added 2026-10-21 (eighteenth batch, step 3.3 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-058 | 2026-10-21 | Step 3.3 shape approved: Q1=b - a NEW domain error `Unique` (subclass of `RuleViolation`: `code="unique"`, `title="Already exists"`), added to `shared/errors.py` together with its tests in `tests/shared/test_error_translator.py`; Q2 and Q3 were left unanswered, so the brief's recorded suggestions stand: the translator carries the constraint name inside the server's 23505 message text with NO per-constraint-name rule table until a consumer needs one; step type CODE-WITH-TESTS (the P0001/23503/commit-time rules predated the step and the green tests pin them; /code added only the 23505 branch). | "The user approved the step brief for: q1=b go (if empty, the step briefed earlier in this session)." + "The user reviewed and approved the tests for:" (generic test approval, no override) | ROADMAP 3.3, D-048, D-055 Q3 |
+| D-059 | 2026-10-21 | `Unique` exists in the translator's detail as the SERVER's message (which names the constraint, e.g. `envelopes_name_key`), NOT as a separate annotated field or a new project-side error class - the detail is exactly the driver message; tests 4/7 fail loudly if the server's 23505 text ever stops naming the constraint. | Step 3.3 /code + /review session run (test passed as-is with the minimal mapping; constraint verified from `pg_constraint` output the same session) | ROADMAP 3.3 Q2 |
+

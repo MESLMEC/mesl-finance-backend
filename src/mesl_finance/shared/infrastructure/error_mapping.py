@@ -8,11 +8,13 @@ from mesl_finance.shared.errors import (
     DateBeforeTenure,
     DomainError,
     RuleViolation,
+    Unique,
     UnknownReference,
 )
 
 _RAISE_EXCEPTION = "P0001"  # RAISE EXCEPTION inside the schema's triggers and functions
 _FOREIGN_KEY_VIOLATION = "23503"
+_UNIQUE_VIOLATION = "23505"
 
 # message fragment (from db/schema.sql) -> domain error. Add a rule only together with its test.
 _RAISE_RULES: list[tuple[str, type[DomainError]]] = [
@@ -34,4 +36,8 @@ def map_db_error(exc: DBAPIError) -> DomainError | None:
         return RuleViolation(message)
     if sqlstate == _FOREIGN_KEY_VIOLATION:
         return UnknownReference(str(getattr(cause, "detail", None) or message))
+    if sqlstate == _UNIQUE_VIOLATION:
+        # the server text already names the constraint ("unique constraint
+        # <name>"); the name is carried through in the detail (step 3.3 Q2).
+        return Unique(message)
     return None
