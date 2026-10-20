@@ -18,6 +18,15 @@ permissions:
     resource: "alembic/**"
     effect: ask
   - action: edit
+    resource: "alembic.ini"
+    effect: ask
+  - action: edit
+    resource: ".gitignore"
+    effect: ask
+  - action: edit
+    resource: "docs/**"
+    effect: ask
+  - action: edit
     resource: "db/sql/*"
     effect: ask
   - action: edit

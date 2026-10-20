@@ -44,8 +44,7 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 0: Repo and tooling baseline
 
-- [x] **0.1** `git init`; extend `.gitignore` (`.env`, `dist/`, `*.orig`); the user commits the current tree. needs: none
-  Notes: this commit is the get-started baseline; pre-existing auth/ledger code and tests are template quality, unticked, and may need rewriting before their steps count as done (user said so 2026-10-20).
+- [ ] **0.1** `git init`; extend `.gitignore` (`.env`, `dist/`, `*.orig`); the user commits the current tree. needs: none
 - [ ] **0.2** Add dev dependency `asyncpg-stubs`. needs: 0.1
 - [ ] **0.3** Fix the ruff findings in `tests/db/test_ledger_contract.py`; format the unformatted files. needs: 0.1
 - [ ] **0.4** Pyright strict-clean, including `tests/conftest.py`. needs: 0.2, 0.3

@@ -52,7 +52,19 @@ Writing rules:
 
 `/start` (read-only brief, questions) -> user answers and says "go" -> `/tests` (failing tests
 only) -> user reviews the tests -> `/code` (implement) -> `/review` (read-only audit) ->
-`/wrapup` (tick roadmap, log decisions, print commit message). The USER commits. You never run
+`/wrapup` (tick roadmap, log decisions, print commit message).
+Two different agents do the two middle stages: `tester` writes tests and can edit only `tests/`;
+`coder` writes code and can never edit `tests/`. Neither can do the other's job.
+Every step has a type, stated in the `/start` brief and confirmed by the user:
+- CODE-WITH-TESTS (most steps): the full routine above.
+- TEST-ONLY (porting an example, fixing lint/type findings inside `tests/`): `/tests`, then
+  `/review`, then `/wrapup`. Skip `/code`. For lint/type fixes the "failing test" is the red gate.
+  For porting a worked example the behaviour already exists in the database, so the new tests are
+  expected to PASS at once; proof of coverage is a table mapping EVERY `EXPECT` / `EXPECT FAIL`
+  line of the example to a test assertion. An unmapped line is a defect.
+- NO-TEST (pure configuration, no behaviour to assert): skip `/tests`; `/code`, `/review`, `/wrapup`.
+If a step needs to edit both tests and source in a way that does not fit one type, STOP and ask:
+the step should be split. The USER commits. You never run
 `git add`, `git commit`, `git push`, or anything that changes git state.
 Do only the step in hand. Never start the next step.
 

@@ -88,15 +88,3 @@ a generated document; NOT authority until the user confirms. Dates are YYYY-MM-D
 |---|---|
 | Q-006 | Which model for which role (/start, /review, /tests, /code)? To be decided after the bake-off (see the chat). Record the exact provider/model strings as OpenCode shows them. |
 | Q-007 | Does the bootstrap CLI also create the pool envelope and the envelope list (B-15)? Decide at that step's `/start`. |
-
----
-
-## Added 2026-10-20 (step 0.1). Earlier rows above are unchanged.
-
-### Confirmed by the user
-
-| ID | Date | Decision | Evidence (the user's words) | Relates to |
-|---|---|---|---|---|
-| D-023 | 2026-10-20 | Everything in the working tree is committed in step 0.1, including OpenCode project config (`opencode.jsonc`, `.opencode/`, `.agents/`). The `.gitignore` covers only build and cache artefacts: `__pycache__/`, `.pytest_cache/`, `.venv/`, `.env`, `.ruff_cache/`, plus `dist/` and `*.orig` added in 0.1. | "a) commit them." | D-016, D-010 |
-
-| D-024 | 2026-10-20 | `proposed`: the PyJWT strict-typing gap (`jwt.encode`/`jwt.decode` member types are "partially unknown" to pyright because PyJWT unions optional `cryptography` key types and `cryptography` is not installed) is handled with two targeted `# pyright: ignore[reportUnknownMemberType]` markers plus justification comments in `src/mesl_finance/auth/infrastructure/tokens.py`. Alternative not taken: adding `pyjwt[crypto]`. | the user chose "1. a" (fix the two pyright errors now, in step 0.1); the specific mechanism is the builder's |

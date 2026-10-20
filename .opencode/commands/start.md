@@ -19,4 +19,5 @@ You remember nothing from earlier sessions. Do exactly this, in order, READ-ONLY
    g. Questions for the user, numbered, each with options and your labelled suggestion.
    h. DDL needed? If yes: "DB change needed: X; alternative: Y".
    i. Is the step small enough for one session? If not, propose how to split it.
+   j. Step type (AGENTS.md section 2): CODE-WITH-TESTS, TEST-ONLY or NO-TEST, with one line why. Name which of /tests and /code will run.
 5. STOP. Write no files. Wait for the user's answers and an explicit "go".
