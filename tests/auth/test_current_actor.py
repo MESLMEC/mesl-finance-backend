@@ -22,7 +22,7 @@ def _expired_token() -> str:
 
 async def test_an_expired_token_is_a_401_problem(client: AsyncClient) -> None:
     response = await client.post(
-        "/deposits", json=DEPOSIT, headers={"Authorization": f"Bearer {_expired_token()}"}
+        "/api/v1/deposits", json=DEPOSIT, headers={"Authorization": f"Bearer {_expired_token()}"}
     )
 
     assert response.status_code == 401
@@ -33,7 +33,7 @@ async def test_an_expired_token_is_a_401_problem(client: AsyncClient) -> None:
 async def test_a_token_signed_with_another_secret_is_a_401_problem(client: AsyncClient) -> None:
     forged = JwtTokenService("another-secret-" + "z" * 32, ttl=timedelta(hours=72)).issue(USERNAME)
     response = await client.post(
-        "/deposits", json=DEPOSIT, headers={"Authorization": f"Bearer {forged.token}"}
+        "/api/v1/deposits", json=DEPOSIT, headers={"Authorization": f"Bearer {forged.token}"}
     )
 
     assert response.status_code == 401
@@ -42,7 +42,9 @@ async def test_a_token_signed_with_another_secret_is_a_401_problem(client: Async
 
 
 async def test_a_non_bearer_authorization_header_is_a_401_problem(client: AsyncClient) -> None:
-    response = await client.post("/deposits", json=DEPOSIT, headers={"Authorization": "Basic abc"})
+    response = await client.post(
+        "/api/v1/deposits", json=DEPOSIT, headers={"Authorization": "Basic abc"}
+    )
 
     assert response.status_code == 401
     assert response.headers["content-type"].startswith("application/problem+json")

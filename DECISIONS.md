@@ -344,3 +344,23 @@ Gates this session: `uv run pytest` 138 passed (133 pre-existing + 5 new); `uv r
 ### Evidence for the step close
 
 Gates this session: `uv run pytest` 145 passed (138 pre-existing + 7 new); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "79 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit result: item 7 FAIL until this batch was appended; all other seven items PASS.
+
+## Added 2026-10-21 (twenty-first batch, step 4.3 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-064 | 2026-10-21 | Step 4.3 shape: (Q1=a) P-002 confirmed - one top-level `/api/v1` prefix in `main.py` wrapping the auth and ledger routers (`API_PREFIX`, `include_router(prefix=...)`), while `/docs` and `/openapi.json` stay at the root; (Q2=a) the framework's own HTTP errors (404/405) are translated to problem JSON with `code` from a small status map (404 `not_found`, 405 `method_not_allowed`, fallback `http_error`), `title` from `http.client.responses`, `detail` from the exception and its headers (e.g. `Allow`) forwarded; (Q3=a) new test package `tests/api/`; (Q4=a) the pre-existing login-API tests stay in `tests/auth/test_login_api.py`, only their paths updated; (Q5=a) a test pins that the unprefixed `/auth/login` is gone (404); (Q6=a) `create_app(settings: Settings | None = None)` and the `app.state` wiring stay unchanged. Q1-Q6 were answered by the generic approval, so the brief's labelled suggestions stand (same pattern as D-062). | "The user approved the step brief for: go (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for: (if empty, the step in this session)." | ROADMAP 4.3, P-002, D-006, D-013 |
+
+### Resolutions of earlier rows (nothing above was edited)
+
+| Row | Resolution |
+|---|---|
+| P-002 | accepted -> D-064: the API lives under `/api/v1` |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-065 (proposed) | 2026-10-21 | Problem-JSON details behind 4.3: FastAPI 0.150.0's default `HTTPException` handler returns `{"detail": ...}` with `application/json` (`fastapi/exception_handlers.py`), so framework 404/405 were not problem JSON before this step; Starlette dispatches exception handlers by walking `type(exc).__mro__` (`starlette/_exception_handler.py:16-20`), so ONE `StarletteHTTPException` handler also catches `fastapi.HTTPException`; a 405 is raised with `headers={"Allow": "POST"}` (`starlette/routing.py:278-279`), which the handler must forward; `http.client.responses` gives the standard phrases ("Not Found", "Method Not Allowed"). `shared/api/problems.py::problem()` now takes `headers: Mapping[str, str] | None` and only applies its `WWW-Authenticate: Bearer` default when status is 401 AND no headers were supplied. Tests: `tests/api/test_app_factory.py` (3) + `tests/api/test_problem_json.py` (5); full suite 153 passed (145 pre-existing files + 8 new guards), ruff/format/pyright green. | installed-source reads listed above; gates run 2026-10-21 |

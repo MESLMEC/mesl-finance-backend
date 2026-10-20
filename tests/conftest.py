@@ -157,5 +157,7 @@ async def client(settings: Settings) -> AsyncIterator[AsyncClient]:
 
 @pytest_asyncio.fixture
 async def auth(client: AsyncClient) -> dict[str, str]:
-    response = await client.post("/auth/login", json={"username": USERNAME, "password": PASSWORD})
+    response = await client.post(
+        "/api/v1/auth/login", json={"username": USERNAME, "password": PASSWORD}
+    )
     return {"Authorization": f"Bearer {response.json()['access_token']}"}

@@ -105,7 +105,12 @@ How the app needs are met with ZERO schema changes:
   covers this step.
 - [x] **4.2** JWT issue and verify (PyJWT, 72h, access token only) and the FastAPI `current_actor` dependency. needs: 4.1
   Notes: CODE-WITH-TESTS (D-062): the token service, route dependency and most tests pre-existed (D-023) and the 7 new guards were green at once, so /code only applied the approved `current_user` -> `current_actor` rename (auth/api/dependencies.py, ledger/api/router.py); guards: missing `sub`, missing `exp`, HS512 algorithm pinning, claim set `{sub,iat,exp}`, expired/forged/non-bearer 401s (tests/auth/test_tokens.py, tests/auth/test_current_actor.py). No `db/examples` script covers this step.
-- [ ] **4.3** App factory, RFC 9457 problem-JSON error handlers, `POST /api/v1/auth/login` and API tests. needs: 4.2 [P-002]
+- [x] **4.3** App factory, RFC 9457 problem-JSON error handlers, `POST /api/v1/auth/login` and API tests. needs: 4.2 [P-002]
+  Notes: P-002 confirmed (D-064). `main.py` mounts both routers under `API_PREFIX = "/api/v1"` via
+  `include_router(..., prefix=...)`; `/docs` and `/openapi.json` stay at the root. The framework's own
+  404/405 are problem JSON (`not_found` / `method_not_allowed`, fallback `http_error`; `title` from
+  `http.client.responses`, exception headers e.g. `Allow` forwarded). Guard tests live in `tests/api/`;
+  every pre-existing API test path moved to `/api/v1` (D-065).
 
 ## Phase 5: Envelopes and cost centers [P-009]
 

@@ -9,7 +9,9 @@ from tests.conftest import PASSWORD, USERNAME, TestDb
 async def test_login_returns_a_bearer_token_valid_for_72_hours(
     client: AsyncClient, db: TestDb
 ) -> None:
-    response = await client.post("/auth/login", json={"username": USERNAME, "password": PASSWORD})
+    response = await client.post(
+        "/api/v1/auth/login", json={"username": USERNAME, "password": PASSWORD}
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -24,7 +26,9 @@ async def test_login_returns_a_bearer_token_valid_for_72_hours(
 async def test_wrong_credentials_get_a_problem_json_401(
     client: AsyncClient, db: TestDb, username: str, password: str
 ) -> None:
-    response = await client.post("/auth/login", json={"username": username, "password": password})
+    response = await client.post(
+        "/api/v1/auth/login", json={"username": username, "password": password}
+    )
 
     assert response.status_code == 401
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -33,7 +37,7 @@ async def test_wrong_credentials_get_a_problem_json_401(
 
 async def test_a_protected_route_needs_a_token(client: AsyncClient, db: TestDb) -> None:
     deposit = {"amount": 100, "occurred_on": "2026-02-01", "source": "other"}
-    response = await client.post("/deposits", json=deposit)
+    response = await client.post("/api/v1/deposits", json=deposit)
 
     assert response.status_code == 401
     assert response.json()["code"] == "invalid_token"
@@ -42,7 +46,7 @@ async def test_a_protected_route_needs_a_token(client: AsyncClient, db: TestDb) 
 async def test_a_protected_route_rejects_a_garbage_token(client: AsyncClient, db: TestDb) -> None:
     deposit = {"amount": 100, "occurred_on": "2026-02-01", "source": "other"}
     response = await client.post(
-        "/deposits", json=deposit, headers={"Authorization": "Bearer nope"}
+        "/api/v1/deposits", json=deposit, headers={"Authorization": "Bearer nope"}
     )
 
     assert response.status_code == 401

@@ -17,6 +17,8 @@ from mesl_finance.shared.api.problems import install_error_handlers
 from mesl_finance.shared.infrastructure.database import create_engine
 from mesl_finance.shared.settings import Settings
 
+API_PREFIX = "/api/v1"
+
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """App factory. Run:  uvicorn --app-dir src mesl_finance.main:create_app --factory"""
@@ -41,6 +43,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.record_deposit = RecordDeposit(lambda actor: SqlLedgerUnitOfWork(engine, actor))
 
     install_error_handlers(app)
-    app.include_router(auth_router)
-    app.include_router(ledger_router)
+    app.include_router(auth_router, prefix=API_PREFIX)
+    app.include_router(ledger_router, prefix=API_PREFIX)
     return app
