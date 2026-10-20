@@ -59,7 +59,8 @@ How the app needs are met with ZERO schema changes:
   Notes: NO-TEST step (user-approved). alembic 1.20.0 in the main group; `alembic/env.py` reads the owner DSN from the env var `MESL_ADMIN_DATABASE_URL` only (accepts `postgresql://`, normalizes to `postgresql+asyncpg://`, hard-fails otherwise) and sets `transaction_per_migration=True`. `alembic/versions/.gitkeep` holds the versions dir until 1.3.
 - [x] **1.2** Decide, by experiment, how revision 0001 executes the script: (a) the raw asyncpg connection runs the whole file (this is how `tests/conftest.py` loads it today) or (b) a statement splitter. Prefer (a) if it works under Alembic. Build a splitter only if (a) is impossible. Record the outcome in DECISIONS.md. needs: 1.1
   Notes: outcome is D-030 — option (a): revision 0001 executes `db/schema.sql` whole on the raw asyncpg connection Alembic owns, wrapped in the revision's own server-side transaction (`async with raw.transaction():`); a splitter is unnecessary.
-- [ ] **1.3** `alembic/versions/0001_initial.py`: executes `db/schema.sql` in place (never copied); records the file's sha256. needs: 1.2
+- [x] **1.3** `alembic/versions/0001_initial.py`: executes `db/schema.sql` in place (never copied); records the file's sha256. needs: 1.2
+  Notes: the revision owns a server-side transaction around the whole-file execute (D-030/D-031); if db/schema.sql ever legitimately changes, the recorded sha256 in `0001_initial.py` must be updated too (the 1.5 guard test will catch a mismatch).
 - [ ] **1.4** `tests/conftest.py` builds the template DB with `alembic upgrade head` (owner DSN). needs: 1.3
 - [ ] **1.5** Guard test: sha256 of `db/schema.sql` equals the hash recorded in 0001. needs: 1.3
 - [ ] **1.6** AGENTS.md repointed (the Alembic chain is the migration history; `db/schema.sql` is 0001's payload and is never edited) and the future-change convention written down (`db/sql/NNN_*.sql` + thin revision; consult the user first). needs: 1.4, 1.5
