@@ -10,6 +10,13 @@ from mesl_finance.auth.api.router import router as auth_router
 from mesl_finance.auth.application.login import Login
 from mesl_finance.auth.infrastructure.credentials import Argon2CredentialChecker
 from mesl_finance.auth.infrastructure.tokens import JwtTokenService
+from mesl_finance.envelopes.api.router import router as envelopes_router
+from mesl_finance.envelopes.application.create_envelope import CreateEnvelope
+from mesl_finance.envelopes.application.deactivate_envelope import DeactivateEnvelope
+from mesl_finance.envelopes.application.list_envelopes import ListEnvelopes
+from mesl_finance.envelopes.application.rename_envelope import RenameEnvelope
+from mesl_finance.envelopes.application.update_envelope_settings import UpdateEnvelopeSettings
+from mesl_finance.envelopes.infrastructure.unit_of_work import SqlEnvelopeUnitOfWork
 from mesl_finance.ledger.api.router import router as ledger_router
 from mesl_finance.ledger.application.record_deposit import RecordDeposit
 from mesl_finance.ledger.infrastructure.unit_of_work import SqlLedgerUnitOfWork
@@ -42,7 +49,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.record_deposit = RecordDeposit(lambda actor: SqlLedgerUnitOfWork(engine, actor))
 
+    def envelope_unit_of_work(actor: str) -> SqlEnvelopeUnitOfWork:
+        return SqlEnvelopeUnitOfWork(engine, actor)
+
+    app.state.create_envelope = CreateEnvelope(envelope_unit_of_work)
+    app.state.list_envelopes = ListEnvelopes(envelope_unit_of_work)
+    app.state.rename_envelope = RenameEnvelope(envelope_unit_of_work)
+    app.state.update_envelope_settings = UpdateEnvelopeSettings(envelope_unit_of_work)
+    app.state.deactivate_envelope = DeactivateEnvelope(envelope_unit_of_work)
+
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(ledger_router, prefix=API_PREFIX)
+    app.include_router(envelopes_router, prefix=API_PREFIX)
     return app

@@ -364,3 +364,32 @@ Gates this session: `uv run pytest` 145 passed (138 pre-existing + 7 new); `uv r
 | ID | Date | Fact | Evidence |
 |---|---|---|---|
 | D-065 (proposed) | 2026-10-21 | Problem-JSON details behind 4.3: FastAPI 0.150.0's default `HTTPException` handler returns `{"detail": ...}` with `application/json` (`fastapi/exception_handlers.py`), so framework 404/405 were not problem JSON before this step; Starlette dispatches exception handlers by walking `type(exc).__mro__` (`starlette/_exception_handler.py:16-20`), so ONE `StarletteHTTPException` handler also catches `fastapi.HTTPException`; a 405 is raised with `headers={"Allow": "POST"}` (`starlette/routing.py:278-279`), which the handler must forward; `http.client.responses` gives the standard phrases ("Not Found", "Method Not Allowed"). `shared/api/problems.py::problem()` now takes `headers: Mapping[str, str] | None` and only applies its `WWW-Authenticate: Bearer` default when status is 401 AND no headers were supplied. Tests: `tests/api/test_app_factory.py` (3) + `tests/api/test_problem_json.py` (5); full suite 153 passed (145 pre-existing files + 8 new guards), ruff/format/pyright green. | installed-source reads listed above; gates run 2026-10-21 |
+
+## Added 2026-10-21 (twenty-second batch, step 5.1 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-066 | 2026-10-21 | Step 5.1 shape: (Q3=b) cap and priority are set on create AND through a separate `POST /api/v1/envelopes/{id}/settings` action; Q1-Q2 and Q4-Q9 were left unanswered, so the brief's labelled suggestions stand: Q1=a P-009 confirmed (envelopes before cost centers), Q2=a action-style routes (`POST /envelopes`, `GET /envelopes`, `POST /envelopes/{id}/rename`, `POST /envelopes/{id}/settings`, `POST /envelopes/{id}/deactivate`), Q4=a the list is every envelope in id order with no balance, Q5=a an unknown id is 404 `not_found` (the router raises `HTTPException(404)` and the existing handler formats it), Q6=a a CHECK violation is 409 `rule_violation` through the shared translator, Q7=a blank names are refused by the app (422 `validation_failed`), Q8=a the pool may be renamed (the schema forbids changing `is_pool`, not `name`), Q9=a all operations in one session. | "The user approved the step brief for: q3=b go (if empty, the step briefed earlier in this session)." | ROADMAP 5.1, P-009, D-021, D-064 |
+| D-067 | 2026-10-21 | The `settings` action's semantics, as pinned by the approved tests: the body replaces BOTH `target_cap` and `alloc_priority`, both fields required and nullable (null clears; an omitted field is 422 `validation_error`). This detail was not in the brief, so it is recorded from the approved test `test_settings_without_both_fields_is_422`. | "The user reviewed and approved the tests for:  (if empty, the step in this session)." | D-066, ROADMAP 5.1 |
+| D-068 | 2026-10-21 | The shared error translator gained exactly ONE rule in this step: SQLSTATE 23514 (table CHECK violation) -> `RuleViolation` (409 `rule_violation`), so PostgreSQL keeps owning `envelopes.target_cap >= 0` (db/schema.sql:69) instead of the app duplicating it. Pinned end to end by the two negative-cap API tests. | "q3=b go" plus the generic test approval (D-066/D-067); Q6=a was the brief's labelled suggestion | ROADMAP 5.1, AGENTS.md section 5, D-059 |
+
+### Resolutions of earlier rows (nothing above was edited)
+
+| Row | Resolution |
+|---|---|
+| P-009 | accepted -> D-066: envelope actions come before cost centers (5.2 is now the next eligible step) |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-069 (proposed) | 2026-10-21 | Two gate facts for later test/code sessions. (1) ruff's isort classifies an import of a module that does not exist yet as THIRD-party, so a test that pins a not-yet-created package must import it lazily or its import block has to be re-sorted the moment the package appears; `tests/envelopes/unit/test_envelope_domain.py:34-42` does this via `import_module` + `vars(module)["Envelope"]` (B009 forbids a constant-name `getattr`). (2) ruff `S608` flags f-string SQL even when the interpolated part is a module-level constant column list, so `src/mesl_finance/envelopes/infrastructure/repository.py` inlines its column list in every statement instead of sharing a constant. | `/tmp/isort-probe` runs (module absent -> I001 wants third-party grouping; module present -> first-party grouping) and the red `ruff check .` run before the repository rewrite, then green gates |
+
+### Evidence for the step close
+
+Gates this session: `uv run pytest` 188 passed (153 pre-existing + 35 new: 9 domain, 26 API);
+`uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "103 files already formatted";
+`uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS, item 7 FAIL
+until this batch and the ROADMAP tick were written.

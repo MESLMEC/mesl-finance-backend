@@ -15,6 +15,7 @@ from mesl_finance.shared.errors import (
 _RAISE_EXCEPTION = "P0001"  # RAISE EXCEPTION inside the schema's triggers and functions
 _FOREIGN_KEY_VIOLATION = "23503"
 _UNIQUE_VIOLATION = "23505"
+_CHECK_VIOLATION = "23514"  # a table CHECK, e.g. envelopes.target_cap >= 0
 
 # message fragment (from db/schema.sql) -> domain error. Add a rule only together with its test.
 _RAISE_RULES: list[tuple[str, type[DomainError]]] = [
@@ -40,4 +41,8 @@ def map_db_error(exc: DBAPIError) -> DomainError | None:
         # the server text already names the constraint ("unique constraint
         # <name>"); the name is carried through in the detail (step 3.3 Q2).
         return Unique(message)
+    if sqlstate == _CHECK_VIOLATION:
+        # PostgreSQL owns table CHECKs; the server text names the constraint
+        # (step 5.1 Q6=a, pinned by the negative-cap API tests).
+        return RuleViolation(message)
     return None

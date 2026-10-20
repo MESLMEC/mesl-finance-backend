@@ -114,7 +114,8 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 5: Envelopes and cost centers [P-009]
 
-- [ ] **5.1** Envelopes: create, list, rename, deactivate (only at zero balance); optional cap and priority, no defaults (D-021). needs: 3.3, 4.3
+- [x] **5.1** Envelopes: create, list, rename, deactivate (only at zero balance); optional cap and priority, no defaults (D-021). needs: 3.3, 4.3
+  Notes: the list carries no balance on purpose (balances are ledger reads, 6.7/8.1); the cap/priority `settings` action comes from Q3=b (D-067) and the shared translator gained 23514 -> RuleViolation (D-068).
 - [ ] **5.2** Cost centers (event, member_project, lab_project, competition). needs: 5.1
 
 ## Phase 6: Ledger (first vertical slice)
