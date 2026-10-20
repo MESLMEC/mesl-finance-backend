@@ -76,7 +76,8 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 2: Shared kernel (pure Python: no fastapi, sqlalchemy, asyncpg or pydantic)
 
-- [ ] **2.1** `shared/errors.py` (domain error taxonomy) and `shared/money.py` (whole-BDT `int` value object; never floats). needs: 0.4
+- [x] **2.1** `shared/errors.py` (domain error taxonomy) and `shared/money.py` (whole-BDT `int` value object; never floats). needs: 0.4
+  Notes: `shared/errors.py` already existed in the pre-roadmap guide tree (D-023): user accepted it as-is and it is FROZEN; step 2.1 only adds its guard tests. `Money` is construct-only (no arithmetic operators — PostgreSQL owns the sums; an operator may be added later only together with its test). It accepts only a real `int` (bool/float/Decimal/str refused), is non-negative with zero valid, and exposes the read-only `amount: int` property for any future SQL adapter. The deposit slice keeps its plain `int` amount for now.
 - [ ] **2.2** `shared/ports.py`: `Clock` and the `UnitOfWork` Protocol (transaction scope, actor, repository accessors). needs: 2.1
 
 ## Phase 3: Infrastructure
