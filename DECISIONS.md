@@ -271,3 +271,27 @@ a generated document; NOT authority until the user confirms. Dates are YYYY-MM-D
 ### Evidence for the step close
 
 Gates this session: `uv run pytest` 120 passed (115 pre-existing + 5 new, all green throughout); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "75 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit found no defect (reviewer PASS with the wait-for-notes note below now written: D-053/D-054 above and the ROADMAP 3.1 tick).
+
+## Added 2026-10-21 (seventeenth batch, step 3.2). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-055 | 2026-10-21 | Step 3.2 brief approved with all labelled suggestions: (Q1=b) the concrete class keeps the name `SqlUnitOfWork`; ROADMAP 3.2's wording is amended at wrapup instead of renaming code (resolves D-052); (Q2=a) step type TEST-ONLY — the UoW already exists in the pre-roadmap tree (D-023) and is accepted as-is, no `/code`; (Q3=a) error mapping inside `execute`/`commit` is excluded from 3.2's guard tests and stays step 3.3 territory. The six guard tests in `tests/shared/test_unit_of_work.py` (protocol conformance, actor set transaction-local, no actor leak outside the transaction, rollback discards, commit persists, writes invisible to others before commit) were reviewed and approved. | "The user approved the step brief for: go (if empty, the step briefed earlier in this session)." | ROADMAP 3.2, D-052, D-051, D-053 |
+
+### Resolutions of earlier rows (nothing above was edited)
+
+| Row | Resolution |
+|---|---|
+| D-052 (proposed) | answered -> D-055: keep `SqlUnitOfWork`; the ROADMAP 3.2 wording now says `SqlUnitOfWork` (amended in the step's commit) |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-057 (proposed) | 2026-10-21 | `runtime_checkable` Protocol isinstance checks pass for `SqlUnitOfWork` against `shared/ports.UnitOfWork` because the check is structural member presence (property `actor` + `__aenter__`/`__aexit__`/`commit`); no behaviour is proven by that test — the five DB-backed tests prove behaviour. Guard-test evidence this session: 6 passed; full suite 126 passed; ruff check/format clean; pyright 0 errors. | gates run 2026-10-21 (pytest 126 passed; reviewer re-run same result); stdlib `typing.runtime_checkable` source read this session |
+
+### Evidence for the step close
+
+Gates this session: `uv run pytest` 126 passed (120 pre-existing + 6 new, all green throughout — final re-run also 126 passed); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "76 files already formatted"; `uv run pyright` "0 errors, 0 informations". Audit found no defect (reviewer PASS; the wrapup notes this batch records are: the ROADMAP 3.2 tick + wording amendment, D-055, D-052 resolution, D-057).

@@ -84,7 +84,12 @@ How the app needs are met with ZERO schema changes:
 
 - [x] **3.1** Async engine and session factory (SQLAlchemy 2.x Core + asyncpg, `labapp` DSN, pool pre-ping, no ORM models for the ledger). needs: 0.5, 1.4
   Notes: TEST-ONLY guard tests at `tests/shared/test_database_engine.py`; the engine was already in the pre-roadmap tree (D-023) and was accepted as-is (D-053). The "session factory" is `create_engine` + `SqlUnitOfWork(engine, actor)`, no separate factory; the engine pins Asia/Dhaka via asyncpg `server_settings` (D-053). The `SqlUnitOfWork` vs `SqlAlchemyUnitOfWork` name question (D-052) stays parked for 3.2's `/start`.
-- [ ] **3.2** `SqlAlchemyUnitOfWork`: one transaction per use case; sets `app.actor` with `set_config` inside it. needs: 2.2, 3.1
+- [x] **3.2** `SqlUnitOfWork` (brief Q1=b amended the wording; was formerly named `SqlAlchemyUnitOfWork`):
+  one transaction per use case; sets `app.actor` with `set_config` inside it. needs: 2.2, 3.1
+  Notes: TEST-ONLY (D-055): the UoW already existed in the pre-roadmap tree (D-023) and is
+  accepted as-is; guard tests at `tests/shared/test_unit_of_work.py` (6 tests). The name stays
+  `SqlUnitOfWork` (D-055 Q1=b resolves D-052). Error mapping inside execute/commit stays step
+  3.3 territory (brief Q3=a). No db/examples script covers this step (no P-007 port).
 - [ ] **3.3** The single error translator (infrastructure only): `RaiseError`, unique and foreign-key violations, constraint names, and commit-time raises to typed domain errors. Each rule is added with the test that needs it. needs: 2.1, 3.2
 
 ## Phase 4: Auth (D-006)
