@@ -1,8 +1,9 @@
 """Real-PostgreSQL test harness.
 
 The ledger depends on triggers that fire at COMMIT, so tests run against a real database.
-A template database is built ONCE per test session from db/schema.sql; every test gets its own
-fast clone of it (CREATE DATABASE ... TEMPLATE) and drops it afterwards.
+A template database is built ONCE per test session by the Alembic chain (revision 0001
+executes db/schema.sql); every test gets its own fast clone of it
+(CREATE DATABASE ... TEMPLATE) and drops it afterwards.
 
 Needs a PostgreSQL superuser DSN (the schema creates roles/extensions and the tamper tests
 disable triggers). Point TEST_ADMIN_DSN at your dev server, e.g. the Docker one:
@@ -22,6 +23,8 @@ from urllib.parse import urlsplit, urlunsplit
 import asyncpg
 import pytest
 import pytest_asyncio
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
 from argon2 import PasswordHasher
 from httpx import ASGITransport, AsyncClient
 from pydantic import SecretStr
@@ -33,7 +36,8 @@ ADMIN_DSN = os.environ.get(
     "TEST_ADMIN_DSN", "postgresql://postgres:postgres@localhost:5432/postgres"
 )
 APP_ROLE_PASSWORD = "change-me"  # must match the labapp role created by db/schema.sql
-SCHEMA_FILE = Path(__file__).resolve().parents[1] / "db" / "schema.sql"
+ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
+OWNER_DSN_ENV_VAR = "MESL_ADMIN_DATABASE_URL"  # the only source alembic/env.py accepts
 TEMPLATE_DB = "mesl_test_template"
 TIMEZONE = "Asia/Dhaka"
 
@@ -52,23 +56,34 @@ def dsn_for(database: str, user: str | None = None, password: str | None = None)
     return urlunsplit((parts.scheme, f"{creds}{host}{port}", f"/{database}", "", ""))
 
 
-async def _build_template() -> None:
-    admin = await asyncpg.connect(ADMIN_DSN)
+def _build_template() -> None:
+    """Create the template database and stamp it with the real Alembic chain."""
+
+    async def recreate() -> None:
+        admin = await asyncpg.connect(ADMIN_DSN)
+        try:
+            await admin.execute(f'DROP DATABASE IF EXISTS "{TEMPLATE_DB}" WITH (FORCE)')
+            await admin.execute(f'CREATE DATABASE "{TEMPLATE_DB}"')
+        finally:
+            await admin.close()
+
+    asyncio.run(recreate())
+    # alembic/env.py reads the owner DSN from this env var only (step 1.1); point it at
+    # the template database for the upgrade, then restore whatever was there before.
+    previous = os.environ.get(OWNER_DSN_ENV_VAR)
+    os.environ[OWNER_DSN_ENV_VAR] = dsn_for(TEMPLATE_DB)
     try:
-        await admin.execute(f'DROP DATABASE IF EXISTS "{TEMPLATE_DB}" WITH (FORCE)')
-        await admin.execute(f'CREATE DATABASE "{TEMPLATE_DB}"')
+        alembic_command.upgrade(AlembicConfig(ALEMBIC_INI), "head")
     finally:
-        await admin.close()
-    template = await asyncpg.connect(dsn_for(TEMPLATE_DB))
-    try:
-        await template.execute(SCHEMA_FILE.read_text(encoding="utf-8"))
-    finally:
-        await template.close()  # a template must have no open connections when cloned
+        if previous is None:
+            os.environ.pop(OWNER_DSN_ENV_VAR, None)
+        else:
+            os.environ[OWNER_DSN_ENV_VAR] = previous
 
 
 @pytest.fixture(scope="session", autouse=True)
 def template_database() -> None:
-    asyncio.run(_build_template())
+    _build_template()
 
 
 @dataclass
