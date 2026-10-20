@@ -214,3 +214,17 @@ a generated document; NOT authority until the user confirms. Dates are YYYY-MM-D
 |---|---|---|---|
 | D-043 (proposed) | 2026-10-20 | alembic.ini records `script_location` AND `version_locations` relative to the cwd (lines 6 and 10); run from any other cwd, `ScriptDirectory.walk_revisions()` returns an EMPTY list (probe: `revisions: []`) and `alembic upgrade head` exits 0 as a silent NO-OP — no "Running upgrade" log line, no error, nothing migrated. `Config.set_main_option("script_location", ...)` alone is NOT enough; the bootstrap CLI overrides BOTH with absolute paths derived from `__file__` (`src/mesl_finance/bootstrap.py::_run_migrations`). conftest/pytest are unaffected (repo-root cwd). | Child probe output `cwd: /tmp/..., revisions: []`; failing CLI runs this session (`UndefinedTableError: relation "tenures" does not exist`, rc=1, no Running-upgrade line); all 7 tests green after the absolute-path override |
 | D-044 (proposed) | 2026-10-20 | `ALTER ROLE ... PASSWORD` accepts a string constant only; a bind parameter is not accepted there, so secret values are quoted SERVER-SIDE: `SELECT format('ALTER ROLE %I PASSWORD %L', $1::text, $2::text)` executed over bound params, the returned statement carries PostgreSQL's own quoting. Separately, `asyncpg.connect` refuses the `postgresql+asyncpg` scheme (`asyncpg/connect_utils.py:324`: scheme must be `postgresql` or `postgres`); any asyncpg DSN built from Settings must strip `+asyncpg` first. | connect_utils.py:324 read this session; step 1.7 tests: 7 passed (both facts exercised live) |
+
+## Added 2026-10-20 (thirteenth batch, step 1.8). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-045 | 2026-10-20 | Step 1.8 brief approved as drafted: tests use the CURRENT Sunday (`sunday_on_or_before(current_date)`), not a pinned date, with all expected numbers derived from the schema functions (1b); the two checks the script implies in comments are included as tests — a second 'opening' entry rejected and `labapp` denied an INSERT on `tenures` (2a); step type TEST-ONLY, tests expected to pass at once (3a). | "The user approved the step brief for: 1b 2a 3a go (if empty, the step briefed earlier in this session)." | ROADMAP 1.8, P-007 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-046 (proposed) | 2026-10-20 | `db/examples/00_go_live.sql` contains no machine-readable `EXPECT`/`EXPECT FAIL` lines (64 lines read in full); for just-in-time ports of such scripts the coverage proof is a numbered-section table (kept in the new test file's module docstring) instead of EXPECT-line mapping. Also: — after `allocate`, `allocation_context.pool_balance` sits at the POST-allocation value (2600 in the script scenario), so a faithful port must read the context/suggestion BEFORE calling `allocate`, mirroring the script's §§7 order. | audit finding re-checked this session; 13 go-live tests + full suite 71 passed with gates green |

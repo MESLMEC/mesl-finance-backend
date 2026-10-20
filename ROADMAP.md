@@ -67,7 +67,12 @@ How the app needs are met with ZERO schema changes:
 - [x] **1.6** AGENTS.md repointed (the Alembic chain is the migration history; `db/schema.sql` is 0001's payload and is never edited) and the future-change convention written down (`db/sql/NNN_*.sql` + thin revision; consult the user first). needs: 1.4, 1.5
 - [x] **1.7** Bootstrap CLI `src/mesl_finance/bootstrap.py` (owner credentials): `alembic upgrade head`, set the `labapp` password from env, open the first tenure. Exact scope (for example the pool envelope) is decided at its `/start` (Q-007). needs: 0.5, 1.4 [P-011]
   Notes: P-011 confirmed; scope decided per Q-007 -> D-041 (tenure + pool envelope only) and Q-005 -> D-040 (role and password both derived from MESL_DATABASE_URL). Required CLI options `--tenure-name`/`--opened-on`; idempotent (open tenure exists -> skip, exit 0); documented run `PYTHONPATH=src uv run python -m mesl_finance.bootstrap`. CLI overrides alembic.ini's cwd-relative script_location/version_locations with absolute paths (D-043), so it works from any cwd; ALTER ROLE can only take a constant, quoted server-side with format('%I','%L') over bound params (D-044).
-- [ ] **1.8** Port `00_go_live.sql` to `tests/db/test_go_live.py`. needs: 1.7
+- [x] **1.8** Port `00_go_live.sql` to `tests/db/test_go_live.py`. needs: 1.7
+  Notes: 13 tests, TEST-ONLY (all passed at once). Dates run from
+  `sunday_on_or_before(current_date)` as in the script; every expected number derives from the
+  schema functions, so the suite keeps passing on any later date. Coverage table in the
+  module docstring. 00_go_live.sql has no EXPECT lines; sections map by number.
+
 
 ## Phase 2: Shared kernel (pure Python: no fastapi, sqlalchemy, asyncpg or pydantic)
 
