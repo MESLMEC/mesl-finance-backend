@@ -1,0 +1,44 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Ordered rules, the LAST matching rule wins. Agent files add their own rules after these.
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "ask" },
+    { "action": "shell", "resource": "uv sync*", "effect": "allow" },
+    { "action": "shell", "resource": "uv run pytest*", "effect": "allow" },
+    { "action": "shell", "resource": "uv run ruff*", "effect": "allow" },
+    { "action": "shell", "resource": "uv run pyright*", "effect": "allow" },
+    { "action": "shell", "resource": "git status*", "effect": "allow" },
+    { "action": "shell", "resource": "git diff*", "effect": "allow" },
+    { "action": "shell", "resource": "git log*", "effect": "allow" },
+    { "action": "shell", "resource": "git show*", "effect": "allow" },
+    // the user owns git history
+    { "action": "shell", "resource": "git add*", "effect": "deny" },
+    { "action": "shell", "resource": "git commit*", "effect": "deny" },
+    { "action": "shell", "resource": "git push*", "effect": "deny" },
+    { "action": "shell", "resource": "git reset*", "effect": "deny" },
+    { "action": "shell", "resource": "git checkout*", "effect": "deny" },
+    { "action": "shell", "resource": "git restore*", "effect": "deny" },
+    { "action": "shell", "resource": "git stash*", "effect": "deny" },
+    { "action": "shell", "resource": "git clean*", "effect": "deny" },
+    { "action": "shell", "resource": "git rebase*", "effect": "deny" },
+    { "action": "shell", "resource": "git merge*", "effect": "deny" },
+
+    // web lookups always ask the user first
+    { "action": "webfetch", "resource": "*", "effect": "ask" },
+    { "action": "websearch", "resource": "*", "effect": "ask" },
+
+    // persistent knowledge: every change is confirmed by the user
+    { "action": "edit", "resource": "AGENTS.md", "effect": "ask" },
+    { "action": "edit", "resource": "DECISIONS.md", "effect": "ask" },
+    { "action": "edit", "resource": "BUSINESS.md", "effect": "ask" },
+    { "action": "edit", "resource": "ROADMAP.md", "effect": "ask" },
+    // database truth is frozen
+    { "action": "edit", "resource": "db/schema.sql", "effect": "deny" },
+    { "action": "edit", "resource": "db/examples/*", "effect": "deny" },
+
+    // secrets stay unread
+    { "action": "read", "resource": "*.env", "effect": "deny" },
+    { "action": "read", "resource": "*.env.*", "effect": "deny" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" }
+  ]
+}
