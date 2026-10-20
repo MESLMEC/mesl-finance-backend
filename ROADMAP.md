@@ -61,8 +61,9 @@ How the app needs are met with ZERO schema changes:
   Notes: outcome is D-030 — option (a): revision 0001 executes `db/schema.sql` whole on the raw asyncpg connection Alembic owns, wrapped in the revision's own server-side transaction (`async with raw.transaction():`); a splitter is unnecessary.
 - [x] **1.3** `alembic/versions/0001_initial.py`: executes `db/schema.sql` in place (never copied); records the file's sha256. needs: 1.2
   Notes: the revision owns a server-side transaction around the whole-file execute (D-030/D-031); if db/schema.sql ever legitimately changes, the recorded sha256 in `0001_initial.py` must be updated too (the 1.5 guard test will catch a mismatch).
-- [ ] **1.4** `tests/conftest.py` builds the template DB with `alembic upgrade head` (owner DSN). needs: 1.3
-- [ ] **1.5** Guard test: sha256 of `db/schema.sql` equals the hash recorded in 0001. needs: 1.3
+- [x] **1.4** `tests/conftest.py` builds the template DB with `alembic upgrade head` (owner DSN). needs: 1.3
+- [x] **1.5** Guard test: sha256 of `db/schema.sql` equals the hash recorded in 0001. needs: 1.3
+  Notes: pure unit test at `tests/test_schema_hash.py` (no DB); loads `SCHEMA_SHA256` from the revision by path.
 - [ ] **1.6** AGENTS.md repointed (the Alembic chain is the migration history; `db/schema.sql` is 0001's payload and is never edited) and the future-change convention written down (`db/sql/NNN_*.sql` + thin revision; consult the user first). needs: 1.4, 1.5
 - [ ] **1.7** Bootstrap CLI `src/mesl_finance/bootstrap.py` (owner credentials): `alembic upgrade head`, set the `labapp` password from env, open the first tenure. Exact scope (for example the pool envelope) is decided at its `/start` (Q-007). needs: 0.5, 1.4 [P-011]
 - [ ] **1.8** Port `00_go_live.sql` to `tests/db/test_go_live.py`. needs: 1.7

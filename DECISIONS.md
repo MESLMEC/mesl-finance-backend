@@ -164,3 +164,18 @@ a generated document; NOT authority until the user confirms. Dates are YYYY-MM-D
 | ID | Date | Fact | Evidence |
 |---|---|---|---|
 | D-032 (proposed) | 2026-10-20 | Gate runs from agent subshells can be red for ENVIRONMENTAL reasons only: the dev PostgreSQL 18.0 container (postgres-db-1, D-005) publishes host port 5434, nothing listens on 5432, and `TEST_ADMIN_DSN` is NOT set inside an agent subshell (unset env) — conftest's connect attempt then goes to localhost:5432 and fails. In the user's own shell, where the variable is set, `uv run pytest` passes (49 tests). A subshell pytest ending in `OSError: [Errno 111] Connect call failed ... 5432` is an env gap, not a code/test failure; ask the user to run that gate in their shell. | This session: `docker ps` (postgres:18.0 Up, 5434->5432), `ss -ltn` (nothing on 5432), env probe (TEST_ADMIN_DSN set: False), subshell `uv run pytest` -> 49 setup errors all refusing 5432 while the user's run of the same suite passed the same day. |
+
+## Added 2026-10-20 (ninth batch, step 1.5 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-033 | 2026-10-20 | Step 1.5 is TEST-ONLY (no `/code`): the sha256 guard is a pure unit test at `tests/test_schema_hash.py`, loading `SCHEMA_SHA256` from `alembic/versions/0001_initial.py` by path; the stale `alembic.ini` comment ("guard tests live beside them") is left untouched; coverage proof is the single roadmap assertion, since no `db/examples` script covers this step. | "1. a 2. a 3. a 4. a 5. a" and "go, all default / your suggestion accepted." | ROADMAP 1.5 |
+| D-034 | 2026-10-20 | Step 1.4 (`tests/conftest.py` builds the template via `alembic upgrade head`) is complete in commit `f7a88ee` but was never ticked; the user confirms completion and chose a separate docs commit to tick it. | "1.4 is done, forgot to tick" | ROADMAP 1.4 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-035 (proposed) | 2026-10-20 | D-032 did not reproduce during step 1.5: `TEST_ADMIN_DSN` was set in the agent subshell and host port 5434 was listening, so the agent ran the full suite (51 passed). Later the harness removed the `shell` tool from the agent catalog mid-session, so the closing gates were run by the user (51 passed in 4.77s; ruff/format/pyright green). A missing tool in the agent catalog is a harness gap to report, not a code failure. | `ss`/env probe this session; user-pasted gate run; `No tool named "shell" is currently available` |
