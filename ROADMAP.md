@@ -50,7 +50,8 @@ How the app needs are met with ZERO schema changes:
 - [x] **0.4** Pyright strict-clean, including `tests/conftest.py`. needs: 0.2, 0.3
 - [x] **0.5** `src/mesl_finance/shared/settings.py` (pydantic-settings): app DSN, admin DSN, JWT secret, JWT TTL (72h), treasurer username, argon2 hash, timezone (Asia/Dhaka); plus `.env.example`. needs: 0.4
   Notes: the admin/owner DSN is Settings' required `MESL_ADMIN_DATABASE_URL` (SecretStr); its spelling differs from the tests' raw `TEST_ADMIN_DSN` env var. Local `.env` must add the key.
-- [ ] **0.6** Run every raw `db/examples/*.sql` against PostgreSQL 18: every `EXPECT FAIL` still errors, every expectation still holds. Report differences; change nothing. needs: 0.1 [P-007]
+- [x] **0.6** Run every raw `db/examples/*.sql` against PostgreSQL 18: every `EXPECT FAIL` still errors, every expectation still holds. Report differences; change nothing. needs: 0.1 [P-007]
+  Notes: verified 2026-10-20 (D-025, verify-only step approved by the user): 7 fresh scratch DBs (00; 01+02 share one DB; 03–07), PG 18.0 docker, psql 18.6. Zero differences; nuance for step 6.x: 01 §8 "wrong mirror" errors via the balance guard before any mirror-specific rejection.
 
 ## Phase 1: Alembic chain and bootstrap (D-018, D-019)
 
