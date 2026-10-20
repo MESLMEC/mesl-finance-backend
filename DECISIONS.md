@@ -305,3 +305,24 @@ Gates this session: `uv run pytest` 126 passed (120 pre-existing + 6 new, all gr
 | D-058 | 2026-10-21 | Step 3.3 shape approved: Q1=b - a NEW domain error `Unique` (subclass of `RuleViolation`: `code="unique"`, `title="Already exists"`), added to `shared/errors.py` together with its tests in `tests/shared/test_error_translator.py`; Q2 and Q3 were left unanswered, so the brief's recorded suggestions stand: the translator carries the constraint name inside the server's 23505 message text with NO per-constraint-name rule table until a consumer needs one; step type CODE-WITH-TESTS (the P0001/23503/commit-time rules predated the step and the green tests pin them; /code added only the 23505 branch). | "The user approved the step brief for: q1=b go (if empty, the step briefed earlier in this session)." + "The user reviewed and approved the tests for:" (generic test approval, no override) | ROADMAP 3.3, D-048, D-055 Q3 |
 | D-059 | 2026-10-21 | `Unique` exists in the translator's detail as the SERVER's message (which names the constraint, e.g. `envelopes_name_key`), NOT as a separate annotated field or a new project-side error class - the detail is exactly the driver message; tests 4/7 fail loudly if the server's 23505 text ever stops naming the constraint. | Step 3.3 /code + /review session run (test passed as-is with the minimal mapping; constraint verified from `pg_constraint` output the same session) | ROADMAP 3.3 Q2 |
 
+
+## Added 2026-10-21 (nineteenth batch, step 4.1 close). Earlier rows above are unchanged.
+
+**Note on step numbering:** ROADMAP Phase 3 ends at the ticked 3.3, so the session's fallback
+("first unticked step whose prerequisites are all ticked") selected 4.1; there is no step 3.4.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-060 | 2026-10-21 | Step 4.1 brief approved: questions Q1-Q3 were left unanswered, so the brief's labelled suggestions stand — (Q1=a) TEST-ONLY, the pre-existing `Argon2CredentialChecker` accepted as-is with no `/code`; (Q2=a) the settings-hash wiring test kept; (Q3=a) the pre-existing Phase-4 checker confirmed as accepted as-is (extending the D-023 pattern used for phases 2-3). Five guard tests in `tests/auth/test_credentials.py`: correct credentials verify, wrong password rejected, garbage hash rejected without a raise, wrong username rejected, and verification against the `Settings.auth_password_hash` value itself. | "The user approved the step brief for: go (if empty, the step briefed earlier in this session)." | ROADMAP 4.1, D-006, D-023 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-061 (proposed) | 2026-10-21 | argon2-cffi 25.1.0: `PasswordHasher.verify(hash, password)` returns `Literal[True]` or raises `VerifyMismatchError` (a `VerificationError` subclass) on a mismatch and `InvalidHashError` (a `ValueError`) when the hash's 9-character header is unknown, so `Argon2CredentialChecker`'s `except (VerificationError, InvalidHashError)` covers every documented failure. Test hashes are built with a local low-cost hasher (`time_cost=1, memory_cost=8, parallelism=1`), the same parameters the `settings` fixture uses. | installed source `.venv/lib/python3.15/site-packages/argon2/_password_hasher.py:215-260` and `argon2/exceptions.py:14,40`; `uv run python -c` -> argon2-cffi 25.1.0, Python 3.15.0 |
+
+### Evidence for the step close
+
+Gates this session: `uv run pytest` 138 passed (133 pre-existing + 5 new); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "78 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit PASS on all eight items (scope, library args, SQL names, layering, SQL safety, no stubs, unwritten facts, gates).

@@ -99,7 +99,10 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 4: Auth (D-006)
 
-- [ ] **4.1** Argon2 verification against the settings hash. needs: 0.5, 2.1
+- [x] **4.1** Argon2 verification against the settings hash. needs: 0.5, 2.1
+  Notes: TEST-ONLY (D-060): the checker already existed in the pre-roadmap tree (D-023) and is
+  accepted as-is; guard tests at `tests/auth/test_credentials.py` (5). No `db/examples` script
+  covers this step.
 - [ ] **4.2** JWT issue and verify (PyJWT, 72h, access token only) and the FastAPI `current_actor` dependency. needs: 4.1
 - [ ] **4.3** App factory, RFC 9457 problem-JSON error handlers, `POST /api/v1/auth/login` and API tests. needs: 4.2 [P-002]
 
