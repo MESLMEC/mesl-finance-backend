@@ -253,3 +253,21 @@ a generated document; NOT authority until the user confirms. Dates are YYYY-MM-D
 | ID | Date | Fact | Evidence |
 |---|---|---|---|
 | D-052 (proposed) | 2026-10-21 | Naming mismatch parked per D-051 Q5=a: ROADMAP 3.2 names the future concrete unit of work `SqlAlchemyUnitOfWork`, but the existing concrete class is `SqlUnitOfWork` (`src/mesl_finance/shared/infrastructure/database.py:21`), now exposing a read-only `actor` property (added step 2.2, +5 lines, so `SqlLedgerUnitOfWork` structurally satisfies the shared port that `main.py`'s factory lambda must conform to). Resolve at 3.2's `/start`: adopt the roadmap name in a rename commit, or amend the roadmap wording. | Step 2.2 review finding (reviewer item 7, FAIL then fixed by this entry); `git diff --stat` showed database.py +5/-0; tester/coder reports this session |
+
+## Added 2026-10-21 (sixteenth batch, step 3.1). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-053 | 2026-10-21 | Step 3.1 brief and shape approved with the agent's suggestions: (Q1=a) TEST-ONLY — the async engine already existed in the pre-roadmap tree (D-023) and is accepted as-is, guard tests pin it; (Q2=a) the "session factory" is the existing shape — `create_engine(settings)` plus constructing `SqlUnitOfWork(engine, actor)`, no separate factory; (Q3=a) the engine's `server_settings: {"timezone": "Asia/Dhaka"}` is accepted as-is (D-005); (Q4=a) nothing to do about the unpushed commits. | "The user approved the step brief for: go with your suggestions (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for: (if empty, the step in this session)." | ROADMAP 3.1, D-003, D-005, D-023 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-054 (proposed) | 2026-10-21 | Pyright strict DOES have `reportPrivateUsage` active here: accessing `Pool._pre_ping` in `tests/shared/test_database_engine.py:86` produced `error: "_pre_ping" is protected ... (reportPrivateUsage)` and is suppressed with `# pyright: ignore[reportPrivateUsage]` plus a source citation. SQLAlchemy exposes pre-ping only through that private attribute (sqlalchemy/engine/create.py:649-667 pops `pool_pre_ping` and passes `pre_ping` to the Pool; sqlalchemy/pool/base.py:282 stores `pool._pre_ping`; `AsyncEngine.pool` is the public path, ext/asyncio/engine.py:1251). | gate run this session: pyright 1 error before the suppression, 0 errors after; other calls verified in the same installed source (AsyncConnection.scalar ext/asyncio/engine.py:705; StartableContext __aenter__ ext/asyncio/base.py:151; engine.dispose engine.py:1145) |
+
+### Evidence for the step close
+
+Gates this session: `uv run pytest` 120 passed (115 pre-existing + 5 new, all green throughout); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "75 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit found no defect (reviewer PASS with the wait-for-notes note below now written: D-053/D-054 above and the ROADMAP 3.1 tick).

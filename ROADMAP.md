@@ -82,7 +82,8 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 3: Infrastructure
 
-- [ ] **3.1** Async engine and session factory (SQLAlchemy 2.x Core + asyncpg, `labapp` DSN, pool pre-ping, no ORM models for the ledger). needs: 0.5, 1.4
+- [x] **3.1** Async engine and session factory (SQLAlchemy 2.x Core + asyncpg, `labapp` DSN, pool pre-ping, no ORM models for the ledger). needs: 0.5, 1.4
+  Notes: TEST-ONLY guard tests at `tests/shared/test_database_engine.py`; the engine was already in the pre-roadmap tree (D-023) and was accepted as-is (D-053). The "session factory" is `create_engine` + `SqlUnitOfWork(engine, actor)`, no separate factory; the engine pins Asia/Dhaka via asyncpg `server_settings` (D-053). The `SqlUnitOfWork` vs `SqlAlchemyUnitOfWork` name question (D-052) stays parked for 3.2's `/start`.
 - [ ] **3.2** `SqlAlchemyUnitOfWork`: one transaction per use case; sets `app.actor` with `set_config` inside it. needs: 2.2, 3.1
 - [ ] **3.3** The single error translator (infrastructure only): `RaiseError`, unique and foreign-key violations, constraint names, and commit-time raises to typed domain errors. Each rule is added with the test that needs it. needs: 2.1, 3.2
 
