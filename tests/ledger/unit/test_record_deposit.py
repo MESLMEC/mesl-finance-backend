@@ -1,12 +1,22 @@
 from datetime import date
+from importlib import import_module
 from types import TracebackType
-from typing import Self
+from typing import Any, Self
 
 import pytest
 
 from mesl_finance.ledger.application.record_deposit import RecordDeposit, RecordDepositCommand
-from mesl_finance.ledger.domain.deposit import Deposit, DepositSource
+from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.shared.errors import ValidationFailed
+
+
+def _income_source() -> Any:
+    """The one income-source enum (step 6.1 Q2=a); imported lazily, see D-069."""
+    try:
+        module = import_module("mesl_finance.ledger.domain.entry")
+    except ModuleNotFoundError:
+        pytest.fail("src/mesl_finance/ledger/domain/entry.py does not exist yet")
+    return vars(module)["IncomeSource"]
 
 
 class FakeLedger:
@@ -46,7 +56,7 @@ def command(**overrides: object) -> RecordDepositCommand:
     fields: dict[str, object] = {
         "amount": 500,
         "occurred_on": date(2026, 2, 1),
-        "source": DepositSource.SPONSORSHIP,
+        "source": _income_source().SPONSORSHIP,
     }
     fields.update(overrides)
     return RecordDepositCommand(**fields)  # type: ignore[arg-type]

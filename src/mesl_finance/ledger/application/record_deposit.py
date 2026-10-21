@@ -3,14 +3,15 @@ from dataclasses import dataclass
 from datetime import date
 
 from mesl_finance.ledger.application.ports import LedgerUnitOfWork
-from mesl_finance.ledger.domain.deposit import Deposit, DepositSource
+from mesl_finance.ledger.domain.deposit import Deposit
+from mesl_finance.ledger.domain.entry import IncomeSource
 
 
 @dataclass(frozen=True)
 class RecordDepositCommand:
     amount: int
     occurred_on: date
-    source: DepositSource
+    source: IncomeSource
     note: str = ""
     tag: str | None = None
     cost_center_id: int | None = None

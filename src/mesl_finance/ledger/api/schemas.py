@@ -2,7 +2,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from mesl_finance.ledger.domain.deposit import DepositSource
+from mesl_finance.ledger.domain.entry import IncomeSource
 
 
 class DepositRequest(BaseModel):
@@ -10,7 +10,7 @@ class DepositRequest(BaseModel):
 
     amount: int = Field(strict=True, gt=0, description="Whole BDT")
     occurred_on: date
-    source: DepositSource
+    source: IncomeSource
     note: str = ""
     tag: str | None = None
     cost_center_id: int | None = None

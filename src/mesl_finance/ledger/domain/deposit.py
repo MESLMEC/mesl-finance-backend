@@ -1,17 +1,8 @@
 from dataclasses import dataclass
 from datetime import date
-from enum import StrEnum
 
+from mesl_finance.ledger.domain.entry import IncomeSource
 from mesl_finance.shared.errors import ValidationFailed
-
-
-class DepositSource(StrEnum):
-    WEEKLY_FEE = "weekly_fee"
-    REGISTRATION = "registration"
-    SPONSORSHIP = "sponsorship"
-    ADMIN_GRANT = "admin_grant"
-    DONATION = "donation"
-    OTHER = "other"
 
 
 @dataclass(frozen=True)
@@ -23,7 +14,7 @@ class Deposit:
 
     amount: int
     occurred_on: date
-    source: DepositSource
+    source: IncomeSource
     note: str = ""
     tag: str | None = None
     cost_center_id: int | None = None
@@ -36,7 +27,7 @@ class Deposit:
         *,
         amount: int,
         occurred_on: date,
-        source: DepositSource,
+        source: IncomeSource,
         note: str = "",
         tag: str | None = None,
         cost_center_id: int | None = None,
@@ -45,7 +36,7 @@ class Deposit:
     ) -> "Deposit":
         if amount <= 0:
             raise ValidationFailed("a deposit amount must be a positive whole number of taka")
-        if source is DepositSource.WEEKLY_FEE:
+        if source is IncomeSource.WEEKLY_FEE:
             if member_id is None:
                 raise ValidationFailed("a weekly fee must name the member who paid")
             if envelope_id is not None:

@@ -441,3 +441,19 @@ Gates this session (final run): `uv run pytest` 236 passed (223 pre-existing + 1
 formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-4, 6, 8 PASS;
 item 5 FAIL, fixed and re-verified by the user's order; item 7 closed by this batch and the
 ROADMAP tick.
+
+
+## Added 2026-10-21 (twenty-fifth batch, step 6.1 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-076 | 2026-10-21 | Step 6.1 shape: Q1-Q5 were left unanswered, so the brief's labelled suggestions stand (same pattern as D-062/D-064/D-066/D-070): (Q1=a) exactly three value objects `EntryKind`, `IncomeSource`, `LedgerLine` and no header/aggregate yet; (Q2=a) `IncomeSource` replaces the pre-existing `DepositSource` as the one enum, with `ledger/domain/deposit.py`, `ledger/application/record_deposit.py`, `ledger/api/schemas.py` and the two ledger unit-test files updated mechanically (no assertion weakened); (Q3=a) `LedgerLine` validates ONLY that `envelope_id` and `amount` are real `int`s (D-047 strictness applied to a signed amount), while `amount <> 0` (db/schema.sql:270) and every per-kind shape (db/schema.sql:340-369) stay PostgreSQL's and are not duplicated in Python (AGENTS.md section 5); (Q4=a) one new module `src/mesl_finance/ledger/domain/entry.py`; (Q5=a) one new test file `tests/ledger/unit/test_entry_domain.py` using the D-069 lazy import. Step type CODE-WITH-TESTS (10 new tests; the 8 existing ledger tests moved to `IncomeSource`). | "The user approved the step brief for:  (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 6.1, D-047, D-062, D-069 |
+| D-077 | 2026-10-21 | The step 6.1 tests are approved as written (10 tests: both enum member name+value lists, a positive and a negative line, and the non-`int` amount/envelope refusals pinned by message text "whole" / "envelope"). The audit's only FAIL was item 7 (this batch plus the roadmap tick); items 1-6 and 8 were PASS. | "The user reviewed and approved the tests for:  (if empty, the step in this session)." then "Audit the current working tree for the step" and "Close the step:  (if empty, the step in this session)." | D-076, ROADMAP 6.1 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-078 (proposed) | 2026-10-21 | Pyright strict flags `vars(x)` as `reportUnknownVariableType` when `x` is typed `Any`, so a lazy-import helper must be annotated `-> ModuleType` (`tests/ledger/unit/test_entry_domain.py:62`); `vars(<ModuleType>)[name]` then yields `Any` and is accepted. The same file documents that requiring `type(value) is int` (not `isinstance`) is what refuses `bool`, matching `shared/money.py`. Gate evidence this session: `uv run pytest` 246 passed, `ruff check` all passed, `ruff format --check` 126 files, `pyright` 0 errors. | pyright run this session: 3 `reportUnknownVariableType` errors at `test_entry_domain.py:69,73,77` before the annotation, 0 after; full test run 246 passed (236 pre-existing + 10 new) |
