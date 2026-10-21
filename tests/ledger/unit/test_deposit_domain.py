@@ -35,6 +35,13 @@ def test_a_valid_deposit_is_created() -> None:
     assert deposit.member_id is None
 
 
+def test_a_non_weekly_deposit_may_name_an_envelope() -> None:
+    deposit = make(source=_income_source().DONATION, envelope_id=2)
+
+    assert deposit.envelope_id == 2
+    assert deposit.member_id is None
+
+
 @pytest.mark.parametrize("amount", [0, -1])
 def test_the_amount_must_be_positive(amount: int) -> None:
     with pytest.raises(ValidationFailed):

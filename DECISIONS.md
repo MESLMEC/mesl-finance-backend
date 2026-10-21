@@ -457,3 +457,32 @@ ROADMAP tick.
 | ID | Date | Fact | Evidence |
 |---|---|---|---|
 | D-078 (proposed) | 2026-10-21 | Pyright strict flags `vars(x)` as `reportUnknownVariableType` when `x` is typed `Any`, so a lazy-import helper must be annotated `-> ModuleType` (`tests/ledger/unit/test_entry_domain.py:62`); `vars(<ModuleType>)[name]` then yields `Any` and is accepted. The same file documents that requiring `type(value) is int` (not `isinstance`) is what refuses `bool`, matching `shared/money.py`. Gate evidence this session: `uv run pytest` 246 passed, `ruff check` all passed, `ruff format --check` 126 files, `pyright` 0 errors. | pyright run this session: 3 `reportUnknownVariableType` errors at `test_entry_domain.py:69,73,77` before the annotation, 0 after; full test run 246 passed (236 pre-existing + 10 new) |
+
+
+## Added 2026-10-21 (twenty-sixth batch, step 6.2 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-079 | 2026-10-21 | Step 6.2 shape: Q1-Q6 were left unanswered, so the brief's labelled suggestions stand (same pattern as D-062/D-064/D-066/D-070/D-076): (Q1=a) P-008 confirmed - the first ledger step is only the deposit action, built end to end; (Q2=a) TEST-ONLY - the deposit slice pre-exists from the pre-roadmap tree (D-023) and is accepted as-is, no `/code`; (Q3=a) the existing contract is confirmed: `POST /api/v1/deposits`, body `{amount, occurred_on, source, note="", tag, cost_center_id, member_id, envelope_id}` (`envelope_id=None` means the pool; naming another envelope is allowed), response `201 {"id": n}`; (Q4=a) the pre-DB guards stay (see D-080); (Q5=a) the ten approved test cases; (Q6=a) test setup uses the `labapp` role directly for the cost-center INSERT and the envelope deactivation, and asserts the error `code` plus a loose "inactive" detail match. | "The user approved the step brief for:  (if empty, the step briefed earlier in this session)." | ROADMAP 6.2, P-008, D-023, D-064, D-076 |
+| D-080 | 2026-10-21 | The three pre-DB guards in `src/mesl_finance/ledger/domain/deposit.py` (`amount > 0`; `weekly_fee` needs `member_id` and forbids `envelope_id`; only `weekly_fee` may carry `member_id`) are kept ON PURPOSE, although AGENTS.md section 5 says schema rules are not re-implemented in Python and D-076 Q3=a ruled that way for 6.1's `LedgerLine`. Reasons: they predate the roadmap (D-023); their two unit tests and three API tests already pin 422 `validation_failed` before any SQL; PostgreSQL still owns the same rules as a backstop (`fee_needs_member` at db/schema.sql:261, `check_shape` at 340-369). A later session must NOT silently delete them: removing them is a new step with new tests and its own decision. | "The user approved the step brief for:  (if empty, the step briefed earlier in this session)." (Q4=a was the brief's labelled suggestion) | AGENTS.md section 5, D-076, ROADMAP 6.2 |
+
+### Resolutions of earlier rows (nothing above was edited)
+
+| Row | Resolution |
+|---|---|
+| P-008 | accepted -> D-079: the first ledger step is the deposit action only, built end to end |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-081 (proposed) | 2026-10-21 | Facts for later sessions. (1) pydantic 2.14.1 with `Field(strict=True)` refuses `True`, `10.5` and `'100'` for an `int` field and accepts `5`, so the API's 422 `validation_error` catches booleans too; the six quota test now pins `[0, -5, 10.5, "100", True]`. (2) The 401 guard needs no extra code: `HTTPBearer(auto_error=False)` returns `None` when the header is missing (`fastapi/security/http.py:305-320`), and `current_actor` turns that into `InvalidToken` -> 401 `invalid_token`. (3) No `db/examples` script covers the app-level deposit slice, so 6.2 is TEST-ONLY without an EXPECT table; example 01's DB-level deposit contract remains ported at `tests/db/test_ledger_contract.py::test_deposit_lands_in_the_pool`. (4) BUSINESS.md B-14 ("All income lands first in the Unallocated General pool") is still UNTICKED and would conflict with the confirmed 6.2 contract (deposits may name another envelope); if the user ever ticks B-14, a new decision and a new step are needed. (5) Gate evidence: `uv run pytest` 256 passed (246 + 9 new tests + 1 new parametrize case); ruff check "All checks passed!"; ruff format --check "126 files already formatted"; pyright "0 errors, 0 warnings, 0 informations". | pydantic probe this session; `.venv/lib/python3.15/site-packages/fastapi/security/http.py:305-320`; `.venv/lib/python3.15/site-packages/asyncpg/connection.py:320,725,746`; `.venv/lib/python3.15/site-packages/httpx/_client.py:1485,1838`; gate runs 2026-10-21 |
+
+### Evidence for the step close
+
+Gates this session: `uv run pytest` 256 passed; `uv run ruff check .` "All checks passed!";
+`uv run ruff format --check .` "126 files already formatted"; `uv run pyright` "0 errors, 0 warnings,
+0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL until this batch and the ROADMAP tick were
+written.

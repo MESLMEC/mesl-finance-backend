@@ -7,7 +7,7 @@ import pytest
 
 from mesl_finance.ledger.application.record_deposit import RecordDeposit, RecordDepositCommand
 from mesl_finance.ledger.domain.deposit import Deposit
-from mesl_finance.shared.errors import ValidationFailed
+from mesl_finance.shared.errors import DomainError, NoOpenTenure, ValidationFailed
 
 
 def _income_source() -> Any:
@@ -20,21 +20,24 @@ def _income_source() -> Any:
 
 
 class FakeLedger:
-    def __init__(self) -> None:
+    def __init__(self, fail_with: DomainError | None = None) -> None:
         self.added: list[tuple[int, Deposit, str]] = []
+        self._fail_with = fail_with
 
     async def open_tenure_id(self) -> int:
         return 7
 
     async def add_deposit(self, tenure_id: int, deposit: Deposit, recorded_by: str) -> int:
+        if self._fail_with is not None:
+            raise self._fail_with
         self.added.append((tenure_id, deposit, recorded_by))
         return 42
 
 
 class FakeUow:
-    def __init__(self, actor: str) -> None:
+    def __init__(self, actor: str, ledger: FakeLedger | None = None) -> None:
         self.actor = actor
-        self.ledger = FakeLedger()
+        self.ledger = FakeLedger() if ledger is None else ledger
         self.committed = False
 
     async def __aenter__(self) -> Self:
@@ -89,3 +92,17 @@ async def test_an_invalid_deposit_never_opens_a_transaction() -> None:
     with pytest.raises(ValidationFailed):
         await RecordDeposit(factory)(command(amount=0), actor="treasurer")
     assert uows == []
+
+
+async def test_a_failed_write_is_not_committed() -> None:
+    uows: list[FakeUow] = []
+    failure = NoOpenTenure("there is no open tenure")
+
+    def factory(actor: str) -> FakeUow:
+        uows.append(FakeUow(actor, FakeLedger(fail_with=failure)))
+        return uows[-1]
+
+    with pytest.raises(NoOpenTenure):
+        await RecordDeposit(factory)(command(), actor="treasurer")
+
+    assert not uows[0].committed

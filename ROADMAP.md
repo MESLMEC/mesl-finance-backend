@@ -128,7 +128,10 @@ How the app needs are met with ZERO schema changes:
   because 02 must run "in the SAME database right after example 1". The six "labapp may not"
   lines are SQLSTATE 42501 (privilege wall), the closed-tenure edit is P0001 (D-073/D-075).
 - [x] **6.1** Ledger domain objects (entry kinds, lines, income sources). needs: 2.1
-- [ ] **6.2** Deposit action, built end to end: domain, use case, SQL adapter, route, unit and API tests. needs: 3.3, 4.3, 5.1, 6.1 [P-008]
+- [x] **6.2** Deposit action, built end to end: domain, use case, SQL adapter, route, unit and API tests. needs: 3.3, 4.3, 5.1, 6.1 [P-008]
+  Notes: TEST-ONLY (D-079): the slice pre-existed (D-023) and is accepted as-is; P-008 confirmed;
+  nine guard tests plus one new parametrize case (246 -> 256). `ledger/domain/deposit.py` keeps its
+  pre-DB amount/member/pool guards on purpose (D-080), not by accident.
 - [ ] **6.3** Expense action. needs: 6.2
 - [ ] **6.4** Transfer action. needs: 6.2
 - [ ] **6.5** Fix amount (reversal and replacement in ONE transaction). needs: 6.2, 6.3
