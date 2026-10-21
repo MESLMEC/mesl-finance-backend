@@ -8,9 +8,12 @@ from mesl_finance.ledger.api.schemas import (
     EntryCreated,
     ExpenseCreated,
     ExpenseRequest,
+    FixAmountCreated,
+    FixAmountRequest,
     TransferCreated,
     TransferRequest,
 )
+from mesl_finance.ledger.application.fix_amount import FixAmount, FixAmountCommand
 from mesl_finance.ledger.application.record_deposit import RecordDeposit, RecordDepositCommand
 from mesl_finance.ledger.application.record_expense import RecordExpense, RecordExpenseCommand
 from mesl_finance.ledger.application.record_transfer import RecordTransfer, RecordTransferCommand
@@ -29,6 +32,10 @@ def get_record_expense(request: Request) -> RecordExpense:
 
 def get_record_transfer(request: Request) -> RecordTransfer:
     return cast(RecordTransfer, request.app.state.record_transfer)
+
+
+def get_fix_amount(request: Request) -> FixAmount:
+    return cast(FixAmount, request.app.state.fix_amount)
 
 
 @router.post("/deposits", status_code=201)
@@ -65,4 +72,23 @@ async def post_transfer(
         kind=EntryKind.TRANSFER,
         from_balance=from_balance,
         to_balance=to_balance,
+    )
+
+
+@router.post("/entries/{entry_id}/fix-amount", status_code=201)
+async def post_fix_amount(
+    entry_id: int,
+    body: FixAmountRequest,
+    user: Annotated[str, Depends(current_actor)],
+    fix_amount: Annotated[FixAmount, Depends(get_fix_amount)],
+) -> FixAmountCreated:
+    replacement_id, reversal_id, kind, balance = await fix_amount(
+        FixAmountCommand(entry_id=entry_id, **body.model_dump()), actor=user
+    )
+    return FixAmountCreated(
+        id=replacement_id,
+        kind=kind,
+        reversal_id=reversal_id,
+        corrected_from=entry_id,
+        balance=balance,
     )

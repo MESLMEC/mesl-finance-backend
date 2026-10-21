@@ -1,7 +1,13 @@
 from mesl_finance.ledger.domain.deposit import Deposit
+from mesl_finance.ledger.domain.entry import EntryKind
 from mesl_finance.ledger.domain.expense import Expense
+from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.transfer import Transfer
-from mesl_finance.shared.errors import NoOpenTenure, UnknownReference
+from mesl_finance.shared.errors import (
+    NoOpenTenure,
+    UnknownReference,
+    ValidationFailed,
+)
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -147,3 +153,108 @@ class SqlLedgerRepository:
             {"envelope_id": transfer.to_envelope_id},
         )
         return entry_id, int(from_balance.scalar_one()), int(to_balance.scalar_one())
+
+    async def fix_amount(
+        self, tenure_id: int, fix: AmountFix, recorded_by: str
+    ) -> tuple[int, int, EntryKind, int]:
+        """Fix the amount: a mirroring reversal plus a replacement, ONE transaction.
+
+        The reversal mirrors the original's lines exactly (`check_shape`,
+        db/schema.sql:357-363) and carries the same member (`tx_guard`,
+        :310-312). The replacement re-writes the original's labels with the
+        corrected amount signed by the kind; its note and date follow the
+        approved contract (step 6.5 brief, Q3=c, Q6=a). PostgreSQL owns the
+        "only once" walls (`reverses_id`/`replaces_id` UNIQUE, :255-256),
+        the tenure checks (`tx_guard`, :293-315) and the overdraw guard
+        (`line_guard`, :319-337).
+        """
+        original = (
+            (
+                await self._uow.execute(
+                    """
+                SELECT kind, note, tag, cost_center_id, source, member_id
+                  FROM ledger_transactions WHERE id = :entry_id
+                """,
+                    {"entry_id": fix.entry_id},
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if original is None:
+            raise UnknownReference(f"entry {fix.entry_id} does not exist")
+        kind = EntryKind(original["kind"])
+        if kind not in (EntryKind.DEPOSIT, EntryKind.EXPENSE):
+            # step 6.5 Q1=a: a fix replaces the one line the kind owns; a
+            # multi-line entry needs its own step, so refuse it by name.
+            raise ValidationFailed(
+                f"entry {fix.entry_id} is a {kind.value}; only deposits and expenses"
+                " can have their amount fixed"
+            )
+        reversal = await self._uow.execute(
+            """
+            INSERT INTO ledger_transactions
+                   (tenure_id, kind, occurred_on, recorded_by, note, tag,
+                    cost_center_id, member_id, reverses_id)
+            VALUES (:tenure_id, 'reversal', :occurred_on, :recorded_by, :note, :tag,
+                    :cost_center_id, :member_id, :entry_id)
+            RETURNING id
+            """,
+            {
+                "tenure_id": tenure_id,
+                "occurred_on": fix.occurred_on,
+                "recorded_by": recorded_by,
+                "note": fix.note,
+                "tag": original["tag"],
+                "cost_center_id": original["cost_center_id"],
+                "member_id": original["member_id"],
+                "entry_id": fix.entry_id,
+            },
+        )
+        reversal_id = int(reversal.scalar_one())
+        await self._uow.execute(
+            """
+            INSERT INTO ledger_lines (transaction_id, envelope_id, amount)
+            SELECT CAST(:reversal_id AS bigint), envelope_id, -amount
+              FROM ledger_lines WHERE transaction_id = :entry_id
+            """,
+            {"reversal_id": reversal_id, "entry_id": fix.entry_id},
+        )
+        replacement = await self._uow.execute(
+            """
+            INSERT INTO ledger_transactions
+                   (tenure_id, kind, occurred_on, recorded_by, note, tag,
+                    cost_center_id, source, member_id, replaces_id)
+            VALUES (:tenure_id, :kind, :occurred_on, :recorded_by, :note, :tag,
+                    :cost_center_id, :source, :member_id, :entry_id)
+            RETURNING id
+            """,
+            {
+                "tenure_id": tenure_id,
+                "kind": kind.value,
+                "occurred_on": fix.occurred_on,
+                "recorded_by": recorded_by,
+                "note": original["note"],
+                "tag": original["tag"],
+                "cost_center_id": original["cost_center_id"],
+                "source": original["source"],
+                "member_id": original["member_id"],
+                "entry_id": fix.entry_id,
+            },
+        )
+        replacement_id = int(replacement.scalar_one())
+        amount = fix.amount if kind is EntryKind.DEPOSIT else -fix.amount
+        new_line = await self._uow.execute(
+            """
+            INSERT INTO ledger_lines (transaction_id, envelope_id, amount)
+            SELECT CAST(:replacement_id AS bigint), envelope_id, CAST(:amount AS integer)
+              FROM ledger_lines WHERE transaction_id = :entry_id
+            RETURNING envelope_id
+            """,
+            {"replacement_id": replacement_id, "amount": amount, "entry_id": fix.entry_id},
+        )
+        balance = await self._uow.execute(
+            "SELECT balance FROM envelope_balances WHERE id = :envelope_id",
+            {"envelope_id": int(new_line.scalar_one())},
+        )
+        return replacement_id, reversal_id, kind, int(balance.scalar_one())

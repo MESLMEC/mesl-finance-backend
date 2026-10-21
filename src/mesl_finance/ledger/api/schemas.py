@@ -60,3 +60,19 @@ class TransferCreated(BaseModel):
     kind: EntryKind
     from_balance: int
     to_balance: int
+
+
+class FixAmountRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: int = Field(strict=True, gt=0, description="Whole BDT: the corrected amount")
+    occurred_on: date = Field(description="Written on BOTH the reversal and the replacement")
+    note: str = Field(description="Why the amount is corrected")
+
+
+class FixAmountCreated(BaseModel):
+    id: int
+    kind: EntryKind
+    reversal_id: int
+    corrected_from: int
+    balance: int

@@ -1,7 +1,9 @@
 from typing import Protocol
 
 from mesl_finance.ledger.domain.deposit import Deposit
+from mesl_finance.ledger.domain.entry import EntryKind
 from mesl_finance.ledger.domain.expense import Expense
+from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.transfer import Transfer
 from mesl_finance.shared.ports import UnitOfWork
 
@@ -63,3 +65,25 @@ class TransferUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def ledger(self) -> TransferRepository: ...
+
+
+class FixAmountRepository(Protocol):
+    """What the fix-amount action needs; the deposit slice keeps its own port."""
+
+    async def open_tenure_id(self) -> int:
+        """The id of the open tenure, or raise NoOpenTenure."""
+        ...
+
+    async def fix_amount(
+        self, tenure_id: int, fix: AmountFix, recorded_by: str
+    ) -> tuple[int, int, EntryKind, int]:
+        """Write the reversal mirror and the replacement (header + lines) in the
+        ONE transaction; returns (replacement_id, reversal_id, kind, balance)."""
+        ...
+
+
+class FixAmountUnitOfWork(UnitOfWork, Protocol):
+    """The fix-amount action's transaction scope."""
+
+    @property
+    def ledger(self) -> FixAmountRepository: ...

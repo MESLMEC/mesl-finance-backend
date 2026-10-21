@@ -141,7 +141,11 @@ How the app needs are met with ZERO schema changes:
   (D-086), blank note/same envelope -> 422 validation_failed, both envelopes pre-checked -> 422
   unknown_reference (so D-084's 409 prediction no longer holds for transfers; sweeps/reversals still),
   own port (D-085).
-- [ ] **6.5** Fix amount (reversal and replacement in ONE transaction). needs: 6.2, 6.3
+- [x] **6.5** Fix amount (reversal and replacement in ONE transaction). needs: 6.2, 6.3
+  Notes: Q1=a scope: `deposit` and `expense` only; the app refuses any other kind as 422
+  `validation_failed` (multi-line fixes, e.g. a transfer, need their own step). ONE
+  transaction writes the mirroring reversal and the replacement; PostgreSQL keeps the
+  once-only (`reverses_id`/`replaces_id`), tenure and overdraw walls (D-088).
 - [ ] **6.6** Label edit (note, tag, cost center, date, source). needs: 6.0, 6.2
 - [ ] **6.7** Entry list (`entries_current`). needs: 6.2
 - [ ] **6.8** Export `docs/openapi.json` for the features so far, generated, no handwritten contract. needs: 6.7 [P-003]

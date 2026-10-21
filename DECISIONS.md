@@ -530,3 +530,24 @@ Gates this session (final run): `uv run pytest` 318 passed (281 pre-existing + 3
 `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "136 files already
 formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS;
 item 7 FAIL until this batch and the ROADMAP tick were written.
+
+## Added 2026-10-21 (twenty-ninth batch, step 6.5 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-088 | 2026-10-21 | Step 6.5 shape: (Q2=a) `POST /api/v1/entries/{entry_id}/fix-amount`, use case `FixAmount`, domain `AmountFix`, response model `FixAmountCreated`; (Q1=a) only `deposit` and `expense` entries are fixable — the app refuses any other kind as 422 `validation_failed`, so a multi-line fix (transfer/sweep) needs its own step; (Q4=c) the response is `201 {"id", "kind", "reversal_id", "corrected_from", "balance"}` (ids/kind plus the envelope balance after the write); (Q5=a) an unknown entry id is 422 `unknown_reference` (adapter pre-check), an already-fixed entry reaches `reverses_id` UNIQUE and answers 409 `unique`, and everything PostgreSQL itself refuses (tenure, mirror, overdraw) is 409 `rule_violation`; (Q6=a) the replacement copies the original's tag, cost center, source and member. Q3 was answered "all": the approved tests pin the resulting contract — `occurred_on` is written on BOTH headers (no date copied from the original), the request `note` goes on the reversal, and the replacement keeps the original's note; a blank note is refused by the domain as 422 `validation_failed` while `db/schema.sql:259` stays the backstop. | "The user approved the step brief for: q3=all, q4=c, go (if empty, the step briefed earlier in this session)." then, after the brief flagged the Q3 reading, "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 6.5, D-083, D-085, D-086 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-089 (proposed) | 2026-10-21 | Facts for later sessions. (1) SQLAlchemy 2.1.5 `Row` refuses string keys (`TypeError: tuple indices must be integers`), so a string-keyed read must go through `Result.mappings().first()` (`sqlalchemy/engine/result.py:774`; `MappingResult.first` :1693; `_KeyType` includes `str` :65-67). (2) The 6.5 reversal copies the original's `tag`/`cost_center_id` onto its own header (`ledger/infrastructure/repository.py:208-210`); no test pins this and `cost_center_summary` already reads the original's cost center for reversals (`db/schema.sql:539-541`), so either choice is safe — a later session must not change it silently. (3) Step 6.5 tests are 27 cases (11 domain, 3 use case, 13 API), all red before `/code` (module absent / 404) and green after. | pyright/pytest runs this session; the `/code` defect and its fix; file reads above |
+
+### Evidence for the step close
+
+Gates this session (final run): `uv run pytest` 345 passed (318 pre-existing + 27 new);
+`uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "141 files already
+formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS;
+item 7 FAIL until this batch and the ROADMAP tick were written.
