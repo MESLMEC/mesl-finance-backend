@@ -1,5 +1,6 @@
 from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.expense import Expense
+from mesl_finance.ledger.domain.transfer import Transfer
 from mesl_finance.shared.errors import NoOpenTenure, UnknownReference
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
@@ -90,3 +91,59 @@ class SqlLedgerRepository:
             {"envelope_id": expense.envelope_id},
         )
         return entry_id, int(balance.scalar_one())
+
+    async def add_transfer(
+        self, tenure_id: int, transfer: Transfer, recorded_by: str
+    ) -> tuple[int, int, int]:
+        # `line_guard` is BEFORE INSERT and preempts the FK: a missing source would
+        # say "would drop below zero" (D-084). Name an unknown envelope correctly.
+        for envelope_id in (transfer.from_envelope_id, transfer.to_envelope_id):
+            row = await self._uow.execute(
+                "SELECT id FROM envelopes WHERE id = :envelope_id",
+                {"envelope_id": envelope_id},
+            )
+            if row.first() is None:
+                raise UnknownReference(f"envelope {envelope_id} does not exist")
+        header = await self._uow.execute(
+            """
+            INSERT INTO ledger_transactions
+                   (tenure_id, kind, occurred_on, recorded_by, note, tag, cost_center_id)
+            VALUES (:tenure_id, 'transfer', :occurred_on, :recorded_by, :note, :tag,
+                    :cost_center_id)
+            RETURNING id
+            """,
+            {
+                "tenure_id": tenure_id,
+                "occurred_on": transfer.occurred_on,
+                "recorded_by": recorded_by,
+                "note": transfer.note,
+                "tag": transfer.tag,
+                "cost_center_id": transfer.cost_center_id,
+            },
+        )
+        entry_id = int(header.scalar_one())
+        await self._uow.execute(
+            """
+            INSERT INTO ledger_lines (transaction_id, envelope_id, amount)
+            VALUES (CAST(:entry_id AS bigint), CAST(:from_envelope_id AS bigint),
+                    CAST(:out_amount AS integer)),
+                   (CAST(:entry_id AS bigint), CAST(:to_envelope_id AS bigint),
+                    CAST(:in_amount AS integer))
+            """,
+            {
+                "entry_id": entry_id,
+                "from_envelope_id": transfer.from_envelope_id,
+                "to_envelope_id": transfer.to_envelope_id,
+                "out_amount": -transfer.amount,
+                "in_amount": transfer.amount,
+            },
+        )
+        from_balance = await self._uow.execute(
+            "SELECT balance FROM envelope_balances WHERE id = :envelope_id",
+            {"envelope_id": transfer.from_envelope_id},
+        )
+        to_balance = await self._uow.execute(
+            "SELECT balance FROM envelope_balances WHERE id = :envelope_id",
+            {"envelope_id": transfer.to_envelope_id},
+        )
+        return entry_id, int(from_balance.scalar_one()), int(to_balance.scalar_one())

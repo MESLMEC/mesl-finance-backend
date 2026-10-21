@@ -2,6 +2,7 @@ from typing import Protocol
 
 from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.expense import Expense
+from mesl_finance.ledger.domain.transfer import Transfer
 from mesl_finance.shared.ports import UnitOfWork
 
 
@@ -41,3 +42,24 @@ class ExpenseUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def ledger(self) -> ExpenseRepository: ...
+
+
+class TransferRepository(Protocol):
+    """What the transfer action needs (D-085: a slice declares its own port)."""
+
+    async def open_tenure_id(self) -> int:
+        """The id of the open tenure, or raise NoOpenTenure."""
+        ...
+
+    async def add_transfer(
+        self, tenure_id: int, transfer: Transfer, recorded_by: str
+    ) -> tuple[int, int, int]:
+        """Write the header + two zero-summing lines; returns (id, from, to balances)."""
+        ...
+
+
+class TransferUnitOfWork(UnitOfWork, Protocol):
+    """The transfer action's transaction scope."""
+
+    @property
+    def ledger(self) -> TransferRepository: ...

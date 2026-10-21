@@ -509,3 +509,24 @@ Gates this session: `uv run pytest` 281 passed (256 pre-existing + 25 new); `uv 
 "All checks passed!"; `uv run ruff format --check .` "131 files already formatted"; `uv run pyright`
 "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL until this batch and
 the ROADMAP tick were written.
+
+## Added 2026-10-21 (twenty-eighth batch, step 6.4 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-086 | 2026-10-21 | Step 6.4 shape: Q1-Q7 were left unanswered, so the brief's labelled suggestions stand (same pattern as D-062/D-064/D-066/D-070/D-076/D-079): (Q1=a) exactly two envelopes per request (`from_envelope_id`, `to_envelope_id`); (Q2=a) response `201 {"id", "kind", "from_balance", "to_balance"}`; (Q3=a) `note` required and non-blank, refused by the domain as 422 `validation_failed` (the schema CHECK at db/schema.sql:259 stays the backstop, same pattern as blank envelope names in D-066 Q7=a); (Q4=a) BOTH envelopes pre-checked in the adapter -> 422 `unknown_reference` (D-083 pattern); (Q5=a) the same envelope on both sides refused by the domain -> 422 `validation_failed`; (Q6=a) optional `tag` / `cost_center_id`; (Q7=a) the slice declares its own `TransferRepository` / `TransferUnitOfWork` (D-085). 37 approved test cases (13 domain, 3 use case, 21 API). | "The user approved the step brief for: go (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 6.4, D-082, D-083, D-085, D-066 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-087 (proposed) | 2026-10-21 | The transfer adapter pre-checks both envelopes before inserting the header (`ledger/infrastructure/repository.py:100-105`), so a transfer to OR from a missing envelope answers 422 `unknown_reference`. This narrows D-084's prediction to sweeps/reversals only: a future `sweep_leftover` (8.3) or reversal (6.5) whose negative line names a missing envelope still reaches `line_guard` first and answers 409 `rule_violation`. Related: PostgreSQL fires a BEFORE INSERT row trigger per row in `VALUES` order, so the adapter writes the negative (source) line first (`repository.py:127-134`); for sweeps/reversals the first negative line is therefore the one that decides which guard/error appears. | `tests/ledger/api/test_transfers_api.py:189-204` (both sides parametrized, 422 `unknown_reference`); file reads of `repository.py`; gates this session: `uv run pytest` 318 passed, `uv run ruff check .` all passed, `uv run ruff format --check .` 136 files, `uv run pyright` 0 errors |
+
+### Evidence for the step close
+
+Gates this session (final run): `uv run pytest` 318 passed (281 pre-existing + 37 new);
+`uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "136 files already
+formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS;
+item 7 FAIL until this batch and the ROADMAP tick were written.

@@ -136,7 +136,11 @@ How the app needs are met with ZERO schema changes:
   Notes: CODE-WITH-TESTS (25 tests). Response is `201 {"id", "kind", "balance"}` (Q5=b,
   D-082). An unknown envelope is named by an app pre-check because `line_guard` is a BEFORE
   INSERT trigger that preempts the FK (D-084). The expense action has its own port (D-085).
-- [ ] **6.4** Transfer action. needs: 6.2
+- [x] **6.4** Transfer action. needs: 6.2
+  Notes: CODE-WITH-TESTS (37 tests); two-envelope request, response {id,kind,from_balance,to_balance}
+  (D-086), blank note/same envelope -> 422 validation_failed, both envelopes pre-checked -> 422
+  unknown_reference (so D-084's 409 prediction no longer holds for transfers; sweeps/reversals still),
+  own port (D-085).
 - [ ] **6.5** Fix amount (reversal and replacement in ONE transaction). needs: 6.2, 6.3
 - [ ] **6.6** Label edit (note, tag, cost center, date, source). needs: 6.0, 6.2
 - [ ] **6.7** Entry list (`entries_current`). needs: 6.2

@@ -8,9 +8,12 @@ from mesl_finance.ledger.api.schemas import (
     EntryCreated,
     ExpenseCreated,
     ExpenseRequest,
+    TransferCreated,
+    TransferRequest,
 )
 from mesl_finance.ledger.application.record_deposit import RecordDeposit, RecordDepositCommand
 from mesl_finance.ledger.application.record_expense import RecordExpense, RecordExpenseCommand
+from mesl_finance.ledger.application.record_transfer import RecordTransfer, RecordTransferCommand
 from mesl_finance.ledger.domain.entry import EntryKind
 
 router = APIRouter(tags=["ledger"])
@@ -22,6 +25,10 @@ def get_record_deposit(request: Request) -> RecordDeposit:
 
 def get_record_expense(request: Request) -> RecordExpense:
     return cast(RecordExpense, request.app.state.record_expense)
+
+
+def get_record_transfer(request: Request) -> RecordTransfer:
+    return cast(RecordTransfer, request.app.state.record_transfer)
 
 
 @router.post("/deposits", status_code=201)
@@ -42,3 +49,20 @@ async def post_expense(
 ) -> ExpenseCreated:
     entry_id, balance = await record_expense(RecordExpenseCommand(**body.model_dump()), actor=user)
     return ExpenseCreated(id=entry_id, kind=EntryKind.EXPENSE, balance=balance)
+
+
+@router.post("/transfers", status_code=201)
+async def post_transfer(
+    body: TransferRequest,
+    user: Annotated[str, Depends(current_actor)],
+    record_transfer: Annotated[RecordTransfer, Depends(get_record_transfer)],
+) -> TransferCreated:
+    entry_id, from_balance, to_balance = await record_transfer(
+        RecordTransferCommand(**body.model_dump()), actor=user
+    )
+    return TransferCreated(
+        id=entry_id,
+        kind=EntryKind.TRANSFER,
+        from_balance=from_balance,
+        to_balance=to_balance,
+    )
