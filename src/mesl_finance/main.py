@@ -10,6 +10,12 @@ from mesl_finance.auth.api.router import router as auth_router
 from mesl_finance.auth.application.login import Login
 from mesl_finance.auth.infrastructure.credentials import Argon2CredentialChecker
 from mesl_finance.auth.infrastructure.tokens import JwtTokenService
+from mesl_finance.cost_centers.api.router import router as cost_centers_router
+from mesl_finance.cost_centers.application.create_cost_center import CreateCostCenter
+from mesl_finance.cost_centers.application.list_cost_centers import ListCostCenters
+from mesl_finance.cost_centers.application.rename_cost_center import RenameCostCenter
+from mesl_finance.cost_centers.application.set_cost_center_status import SetCostCenterStatus
+from mesl_finance.cost_centers.infrastructure.unit_of_work import SqlCostCenterUnitOfWork
 from mesl_finance.envelopes.api.router import router as envelopes_router
 from mesl_finance.envelopes.application.create_envelope import CreateEnvelope
 from mesl_finance.envelopes.application.deactivate_envelope import DeactivateEnvelope
@@ -58,8 +64,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.update_envelope_settings = UpdateEnvelopeSettings(envelope_unit_of_work)
     app.state.deactivate_envelope = DeactivateEnvelope(envelope_unit_of_work)
 
+    def cost_center_unit_of_work(actor: str) -> SqlCostCenterUnitOfWork:
+        return SqlCostCenterUnitOfWork(engine, actor)
+
+    app.state.create_cost_center = CreateCostCenter(cost_center_unit_of_work)
+    app.state.list_cost_centers = ListCostCenters(cost_center_unit_of_work)
+    app.state.rename_cost_center = RenameCostCenter(cost_center_unit_of_work)
+    app.state.set_cost_center_status = SetCostCenterStatus(cost_center_unit_of_work)
+
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(ledger_router, prefix=API_PREFIX)
     app.include_router(envelopes_router, prefix=API_PREFIX)
+    app.include_router(cost_centers_router, prefix=API_PREFIX)
     return app

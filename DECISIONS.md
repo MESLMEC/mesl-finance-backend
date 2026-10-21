@@ -393,3 +393,18 @@ Gates this session: `uv run pytest` 188 passed (153 pre-existing + 35 new: 9 dom
 `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "103 files already formatted";
 `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS, item 7 FAIL
 until this batch and the ROADMAP tick were written.
+
+## Added 2026-10-21 (twenty-third batch, step 5.2 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-070 | 2026-10-21 | Step 5.2 shape: (Q8=b) the cost-center list also filters on `kind` and `status`. Q1-Q7 and Q9 were left unanswered, so the brief's labelled suggestions stand: Q1=a four action routes (`POST /cost-centers`, `GET /cost-centers`, `POST /cost-centers/{id}/rename`, `POST /cost-centers/{id}/status`); Q2=a the status action is `POST .../status` with body `{"status": ...}`; Q3=a create takes `name` + `kind` only and the database default makes it `active`; Q4=a blank names are refused by the app (422 `validation_failed`) although `db/schema.sql:79` only says NOT NULL; Q5=a PostgreSQL's CHECKs own the four kinds and four statuses (23514 -> 409 `rule_violation`, no Python duplication); Q6=a `kind` is fixed at create; Q7=a any status may be set at any time (no transition rules invented); Q9=a the 23505 test pins the constraint name. | "The user approved the step brief for: q8=b go (if empty, the step briefed earlier in this session)." | ROADMAP 5.2, D-066, D-068, D-059 |
+| D-071 | 2026-10-21 | The step 5.2 tests were approved as written, including the three deviations forced by the answers: the "explicit status at create" domain test was dropped (Q3=a), the "app refuses an unknown kind" domain test was dropped (Q5=a), and the "no filters" list test was replaced by unfiltered + `?kind=` + `?status=` tests (Q8=b). The filters are optional, combinable in one query, and the app validates no filter value; no test pins an invalid filter value because no rule defines one (the SQL equality simply matches nothing). | "The user reviewed and approved the tests for:  (if empty, the step in this session)." | D-070 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-072 (proposed) | 2026-10-21 | Step 5.2 facts for later sessions. (1) The cost-center constraint names, read live from `pg_constraint` on the session template: `cost_centers_kind_name_key` (UNIQUE (kind, name)), `cost_centers_kind_check`, `cost_centers_status_check`; the API tests assert those names. (2) `TEST_ADMIN_DSN` here points at database `decentdeath`, not `postgres`, and the same server holds 14 leftover `mesl_dbg_*` databases (left untouched). `psql "$TEST_ADMIN_DSN" -c ... mesl_test_template` reported 0 public tables while `asyncpg` on the same DSN reported 21: for auditing the template, connect with an explicit database in the DSN (asyncpg/python), not a psql positional argument. (3) The cost-center domain exposes a public `require_name()` helper (`cost_centers/domain/cost_center.py`) that the rename use case calls, so the blank-name rule exists once, in the domain. | `pg_constraint` and `pg_tables` queries this session; `uv run pytest` gate output |
