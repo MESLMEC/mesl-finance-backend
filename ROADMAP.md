@@ -132,7 +132,10 @@ How the app needs are met with ZERO schema changes:
   Notes: TEST-ONLY (D-079): the slice pre-existed (D-023) and is accepted as-is; P-008 confirmed;
   nine guard tests plus one new parametrize case (246 -> 256). `ledger/domain/deposit.py` keeps its
   pre-DB amount/member/pool guards on purpose (D-080), not by accident.
-- [ ] **6.3** Expense action. needs: 6.2
+- [x] **6.3** Expense action. needs: 6.2
+  Notes: CODE-WITH-TESTS (25 tests). Response is `201 {"id", "kind", "balance"}` (Q5=b,
+  D-082). An unknown envelope is named by an app pre-check because `line_guard` is a BEFORE
+  INSERT trigger that preempts the FK (D-084). The expense action has its own port (D-085).
 - [ ] **6.4** Transfer action. needs: 6.2
 - [ ] **6.5** Fix amount (reversal and replacement in ONE transaction). needs: 6.2, 6.3
 - [ ] **6.6** Label edit (note, tag, cost center, date, source). needs: 6.0, 6.2

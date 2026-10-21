@@ -486,3 +486,26 @@ Gates this session: `uv run pytest` 256 passed; `uv run ruff check .` "All check
 `uv run ruff format --check .` "126 files already formatted"; `uv run pyright` "0 errors, 0 warnings,
 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL until this batch and the ROADMAP tick were
 written.
+
+## Added 2026-10-21 (twenty-seventh batch, step 6.3 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-082 | 2026-10-21 | Step 6.3 shape: (Q5=b) the expense response is a richer body than the deposit's `{"id"}`, carrying the entry `id`, `kind` and the envelope `balance` after the write; Q1-Q4 and Q6 were left unanswered, so the brief's labelled suggestions stand (same pattern as D-062/D-064/D-066/D-070/D-076/D-079): Q1=a `POST /api/v1/expenses`; Q2=a the body takes a POSITIVE whole-BDT `amount` and the adapter writes the one negative line the schema demands (db/schema.sql:351-352); Q3=a `envelope_id` is required (the pool is a valid envelope); Q4=a no `member_id` (member-linked refunds are ROADMAP 7.4); Q6=a the 18 approved test definitions (25 cases) as listed in the brief. | "q5=b go (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 6.3, D-079, D-076, D-064 |
+| D-083 | 2026-10-21 | Approved option (a) for the unknown-envelope case found during /code: the expense adapter checks the envelope before writing and raises `UnknownReference` when it is missing, so `POST /api/v1/expenses` with an unknown envelope answers 422 `unknown_reference` like the deposit action does. The rejected options were (b) changing the approved test to expect 409 `rule_violation` and (c) a schema change to `line_guard`. This is an accepted, deliberate exception to "do not re-implement schema rules in Python": the pre-check exists to name the error correctly, not to enforce the FK. | "a" (answering the audit question "Tell me (a), (b) or (c)") | D-082, D-084, AGENTS.md section 5 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-084 (proposed) | 2026-10-21 | `line_guard` is a BEFORE INSERT row trigger (db/schema.sql:319-337) and therefore runs before the `ledger_lines_envelope_id_fkey` check. For a MISSING envelope its `SELECT active ... FOR UPDATE` yields NULL, so `IF NOT is_active` does not fire; a negative line then raises P0001 `envelope % would drop below zero (balance 0, change %)`, while a positive line falls through to the FK (23503). Consequence: an expense (one negative line) can never surface an unknown envelope as `unknown_reference` from the database alone — hence D-083's pre-check. This also means a future transfer/sweep/reversal with a negative line on an unknown envelope will answer 409 `rule_violation`, not 422. | Throwaway-DB probe this session: `envelope 999, expense line -150 -> RaiseError sqlstate=P0001 ... "would drop below zero"`; `envelope 999, deposit line 150 -> ForeignKeyViolationError sqlstate=23503`; `db/schema.sql:319-337` |
+| D-085 (proposed) | 2026-10-21 | Adding `add_expense` to the shared `LedgerRepository` protocol breaks the pre-existing fake in `tests/ledger/unit/test_record_deposit.py` under pyright strict (`reportArgumentType`: "FakeLedger is incompatible with protocol LedgerRepository"), and tests may not be edited by the coder. The expense slice therefore declares its own `ExpenseRepository`/`ExpenseUnitOfWork` in `ledger/application/ports.py`; `SqlLedgerUnitOfWork` structurally satisfies both ports, so there is still one adapter and one transaction class. Future slices that extend the ledger should either add their own port or plan a test-fake change with the tester. | pyright run this session: 3 errors in `tests/ledger/unit/test_record_deposit.py:75,93,106` before the split, "0 errors, 0 warnings, 0 informations" after; `src/mesl_finance/ledger/application/ports.py:24-43` |
+
+### Evidence for the step close
+
+Gates this session: `uv run pytest` 281 passed (256 pre-existing + 25 new); `uv run ruff check .`
+"All checks passed!"; `uv run ruff format --check .` "131 files already formatted"; `uv run pyright`
+"0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL until this batch and
+the ROADMAP tick were written.

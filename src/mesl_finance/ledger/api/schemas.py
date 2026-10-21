@@ -2,7 +2,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from mesl_finance.ledger.domain.entry import IncomeSource
+from mesl_finance.ledger.domain.entry import EntryKind, IncomeSource
 
 
 class DepositRequest(BaseModel):
@@ -24,3 +24,20 @@ class DepositRequest(BaseModel):
 
 class EntryCreated(BaseModel):
     id: int
+
+
+class ExpenseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: int = Field(strict=True, gt=0, description="Whole BDT spent")
+    occurred_on: date
+    envelope_id: int = Field(description="The envelope the money is spent from")
+    note: str = ""
+    tag: str | None = None
+    cost_center_id: int | None = None
+
+
+class ExpenseCreated(BaseModel):
+    id: int
+    kind: EntryKind
+    balance: int
