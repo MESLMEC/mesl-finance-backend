@@ -122,7 +122,11 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 6: Ledger (first vertical slice)
 
-- [ ] **6.0** Port `02_ledger_edits_and_roles.sql` to `tests/db/` (label edits and history, limited role, tamper detection). needs: 1.4 [P-007]
+- [x] **6.0** Port `02_ledger_edits_and_roles.sql` to `tests/db/` (label edits and history, limited role, tamper detection). needs: 1.4 [P-007]
+  Notes: 13 cases in `tests/db/test_ledger_edits_and_roles.py`; the module docstring holds the
+  coverage table. `example_01()` lives INSIDE that file (not in conftest) and replays example 1,
+  because 02 must run "in the SAME database right after example 1". The six "labapp may not"
+  lines are SQLSTATE 42501 (privilege wall), the closed-tenure edit is P0001 (D-073/D-075).
 - [ ] **6.1** Ledger domain objects (entry kinds, lines, income sources). needs: 2.1
 - [ ] **6.2** Deposit action, built end to end: domain, use case, SQL adapter, route, unit and API tests. needs: 3.3, 4.3, 5.1, 6.1 [P-008]
 - [ ] **6.3** Expense action. needs: 6.2

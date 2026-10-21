@@ -408,3 +408,36 @@ until this batch and the ROADMAP tick were written.
 | ID | Date | Fact | Evidence |
 |---|---|---|---|
 | D-072 (proposed) | 2026-10-21 | Step 5.2 facts for later sessions. (1) The cost-center constraint names, read live from `pg_constraint` on the session template: `cost_centers_kind_name_key` (UNIQUE (kind, name)), `cost_centers_kind_check`, `cost_centers_status_check`; the API tests assert those names. (2) `TEST_ADMIN_DSN` here points at database `decentdeath`, not `postgres`, and the same server holds 14 leftover `mesl_dbg_*` databases (left untouched). `psql "$TEST_ADMIN_DSN" -c ... mesl_test_template` reported 0 public tables while `asyncpg` on the same DSN reported 21: for auditing the template, connect with an explicit database in the DSN (asyncpg/python), not a psql positional argument. (3) The cost-center domain exposes a public `require_name()` helper (`cost_centers/domain/cost_center.py`) that the rename use case calls, so the blank-name rule exists once, in the domain. | `pg_constraint` and `pg_tables` queries this session; `uv run pytest` gate output |
+
+## Added 2026-10-21 (twenty-fourth batch, step 6.0 close). Earlier rows above are unchanged.
+
+**Note on step numbering:** the session asked for 5.3, which does not exist (Phase 5 ends at the
+ticked 5.2), so the fallback ("first unticked step whose prerequisites are all ticked") selected
+6.0, as in the 4.1 session (see the note before D-060).
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-073 | 2026-10-21 | Step 6.0 shape, as drafted in the step brief: Q1=a the step is 6.0; Q2=a P-007 confirmed (contract tests ported just in time); Q3=a a local `example_01()` helper inside the new test file replays example 1 (no shared conftest scenario); Q4=a the six blocked statements assert `asyncpg.InsufficientPrivilegeError` exactly; Q5=a the file is `tests/db/test_ledger_edits_and_roles.py`; Q6=a expectations are the exact integers derived from the script's amounts (500/200/150/150/60/60/80). | "The user approved the step brief for:  (if empty, the step briefed earlier in this session)." | ROADMAP 6.0, P-007, AGENTS.md section 2 |
+| D-074 | 2026-10-21 | The step 6.0 tests are accepted after one audit cycle: the audit's only defect was item 5 (SQL safety), fixed by binding the entry ids as `$1` in the six refused statements instead of `str.format`; items 1-4, 6 and 8 were PASS and item 7 is this batch. No explicit "tests approved" sentence was given; the user's audit request, the fix order and the instruction to close the step served as the approval. | "Audit the current working tree for the step" then "fix point 5" then "check if we can proceed for wrapup" then "Close the step:  (if empty, the step in this session)." | D-073, AGENTS.md section 2 |
+
+### Resolutions of earlier rows (nothing above was edited)
+
+| Row | Resolution |
+|---|---|
+| P-007 | accepted -> D-073: porting one `db/examples` script just in time before its feature; 6.0 is its first use after 0.6 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-075 (proposed) | 2026-10-21 | Facts for later sessions. (1) In example 02 the "labapp may not" wall is PRIVILEGE-level, not trigger-level: `recorded_by`/`kind` fail through the column-level grant (`db/schema.sql:1196`), `ledger_lines` amount/delete through the missing table grant, `DISABLE TRIGGER` through ownership, `session_replication_role` through superuser — all SQLSTATE 42501 (`InsufficientPrivilegeError`); the closed-tenure relabel instead reaches `tx_label_edit` and raises P0001 (`RaiseError`, 'tenure "2026" is closed'). The future 6.6 label-edit API and the error translator must expect that split. (2) The owner tamper (disable `no_change_ln`, amount +1 on a closed-tenure line) yields exactly 2 `verify_integrity()` rows: the tenure checksum mismatch and the next tenure's opening mismatch (300 vs 301), matching D-025. (3) Example 1's tenure-2 deposit carries note '' (its step-13 INSERT sets none), so 02's first `ledger_label_edits` row has `old_value = ''`; the example's psql output hides that. (4) 02's lines 34-35 ("app role may close tenure via function") execute nothing — no statement, just an `\echo` + `RESET ROLE`; the actual app-role close is lines 47-48, mapped to `test_tamper_restore_and_close_as_app_role`. | `uv run pytest tests/db/test_ledger_edits_and_roles.py -v` (13 passed); `asyncpg/exceptions/__init__.py:639`; `db/schema.sql:287,376-410,1193-1202`; file read of `db/examples/02_ledger_edits_and_roles.sql:34-35,47-48` |
+
+### Evidence for the step close
+
+Gates this session (final run): `uv run pytest` 236 passed (223 pre-existing + 13 new);
+`uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "124 files already
+formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-4, 6, 8 PASS;
+item 5 FAIL, fixed and re-verified by the user's order; item 7 closed by this batch and the
+ROADMAP tick.
