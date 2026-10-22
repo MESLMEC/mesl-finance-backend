@@ -165,7 +165,11 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 7: Fees and members
 
-- [ ] **7.0** Port `03_fees.sql` and `04_fees_existing_members.sql` to `tests/db/`. needs: 1.4 [P-007]
+- [x] **7.0** Port `03_fees.sql` and `04_fees_existing_members.sql` to `tests/db/`. needs: 1.4 [P-007]
+  Notes: TEST-ONLY (D-099); 30 cases (27 in `tests/db/test_fees.py`, 3 in
+  `tests/db/test_fees_existing_members.py`). In 03, the five statements the app role's grants
+  stop (start-date edit, delete period, edit/delete adjustment, member edit) raise 42501,
+  not the append-only trigger's P0001 (D-100).
 - [ ] **7.1** Members and membership periods (start once, end once). needs: 6.2, 7.0
 - [ ] **7.2** Fee rates and shutdown weeks (week and Sunday rules enforced by the database). needs: 7.1
 - [ ] **7.3** Member adjustments (waiver, credit_donation, opening, correction). needs: 7.1
