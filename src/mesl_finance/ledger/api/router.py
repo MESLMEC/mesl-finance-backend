@@ -7,6 +7,7 @@ from mesl_finance.ledger.api.schemas import (
     DepositRequest,
     EntryCreated,
     EntryLabelsOut,
+    EntryOut,
     ExpenseCreated,
     ExpenseRequest,
     FixAmountCreated,
@@ -17,10 +18,12 @@ from mesl_finance.ledger.api.schemas import (
 )
 from mesl_finance.ledger.application.edit_labels import EditLabels, EditLabelsCommand
 from mesl_finance.ledger.application.fix_amount import FixAmount, FixAmountCommand
+from mesl_finance.ledger.application.list_entries import ListEntries
 from mesl_finance.ledger.application.record_deposit import RecordDeposit, RecordDepositCommand
 from mesl_finance.ledger.application.record_expense import RecordExpense, RecordExpenseCommand
 from mesl_finance.ledger.application.record_transfer import RecordTransfer, RecordTransferCommand
 from mesl_finance.ledger.domain.entry import EntryKind
+from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
 
 router = APIRouter(tags=["ledger"])
 
@@ -43,6 +46,10 @@ def get_fix_amount(request: Request) -> FixAmount:
 
 def get_edit_labels(request: Request) -> EditLabels:
     return cast(EditLabels, request.app.state.edit_labels)
+
+
+def get_list_entries(request: Request) -> ListEntries:
+    return cast(ListEntries, request.app.state.list_entries)
 
 
 @router.post("/deposits", status_code=201)
@@ -125,3 +132,30 @@ async def post_edit_labels(
         occurred_on=view.occurred_on,
         source=view.source,
     )
+
+
+def _entry_out(view: EntryView) -> EntryOut:
+    return EntryOut(
+        id=view.id,
+        tenure_id=view.tenure_id,
+        kind=view.kind,
+        occurred_on=view.occurred_on,
+        recorded_at=view.recorded_at,
+        recorded_by=view.recorded_by,
+        note=view.note,
+        tag=view.tag,
+        cost_center_id=view.cost_center_id,
+        member_id=view.member_id,
+        source=view.source,
+        corrected_from=view.corrected_from,
+    )
+
+
+@router.get("/entries")
+async def get_entries(
+    user: Annotated[str, Depends(current_actor)],
+    list_entries: Annotated[ListEntries, Depends(get_list_entries)],
+    tenure_id: int | None = None,
+) -> list[EntryOut]:
+    views = await list_entries(ListEntriesQuery(tenure_id=tenure_id), actor=user)
+    return [_entry_out(view) for view in views]

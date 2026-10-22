@@ -2,6 +2,7 @@ from typing import Protocol
 
 from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.entry import EntryKind
+from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
@@ -103,3 +104,18 @@ class LabelEditUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def ledger(self) -> LabelEditRepository: ...
+
+
+class EntryListRepository(Protocol):
+    """What the entry-list read needs; the write slices keep their own ports."""
+
+    async def list_entries(self, query: ListEntriesQuery) -> list[EntryView]:
+        """The ``entries_current`` rows, newest id last (optionally one tenure)."""
+        ...
+
+
+class EntryListUnitOfWork(UnitOfWork, Protocol):
+    """The entry-list read's transaction scope."""
+
+    @property
+    def ledger(self) -> EntryListRepository: ...

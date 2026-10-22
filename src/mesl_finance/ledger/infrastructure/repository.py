@@ -2,6 +2,7 @@ from typing import Any
 
 from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.entry import EntryKind, IncomeSource
+from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
@@ -326,3 +327,45 @@ class SqlLedgerRepository:
             occurred_on=labels["occurred_on"],
             source=IncomeSource(source) if source is not None else None,
         )
+
+    async def list_entries(self, query: ListEntriesQuery) -> list[EntryView]:
+        """The treasurer's list: `entries_current`, optionally one tenure.
+
+        The view already hides reversals and voided originals and exposes
+        `replaces_id` as `corrected_from` (db/schema.sql:426-430); this read
+        only filters and orders. No amounts: the view has none (step 6.7 Q3=a).
+        """
+        rows = (
+            (
+                await self._uow.execute(
+                    """
+                SELECT id, tenure_id, kind, occurred_on, recorded_at, recorded_by,
+                       note, tag, cost_center_id, member_id, source, corrected_from
+                  FROM entries_current
+                 WHERE CAST(:tenure_id AS bigint) IS NULL
+                    OR tenure_id = CAST(:tenure_id AS bigint)
+                 ORDER BY id
+                """,
+                    {"tenure_id": query.tenure_id},
+                )
+            )
+            .mappings()
+            .all()
+        )
+        return [
+            EntryView(
+                id=row["id"],
+                tenure_id=row["tenure_id"],
+                kind=EntryKind(row["kind"]),
+                occurred_on=row["occurred_on"],
+                recorded_at=row["recorded_at"],
+                recorded_by=row["recorded_by"],
+                note=row["note"],
+                tag=row["tag"],
+                cost_center_id=row["cost_center_id"],
+                member_id=row["member_id"],
+                source=IncomeSource(row["source"]) if row["source"] is not None else None,
+                corrected_from=row["corrected_from"],
+            )
+            for row in rows
+        ]

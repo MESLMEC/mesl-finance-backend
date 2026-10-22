@@ -150,7 +150,13 @@ How the app needs are met with ZERO schema changes:
   Notes: Q7=b - a blank note on transfer/sweep/reversal is refused by the app (422) after the
   row read, not by the CHECK; 200 `{id,kind,note,tag,cost_center_id,occurred_on,source}`; any
   non-opening kind is editable; own port (D-085); 35 tests (D-090/D-091).
-- [ ] **6.7** Entry list (`entries_current`). needs: 6.2
+- [x] **6.7** Entry list (`entries_current`). needs: 6.2
+  Notes: CODE-WITH-TESTS, 13 tests (D-093/D-094). `GET /api/v1/entries` returns the
+  12-key `EntryOut` read straight from `entries_current`, deliberately WITHOUT amounts
+  (Q3=a); `?tenure_id=` is the only filter and an unknown id is an empty list, and a read
+  never asks for an open tenure or commits. Only one tenure may be open at a time
+  (db/schema.sql:40), so a cross-tenure read test must hand over via `close_tenure`, which
+  leaves a carry-over `opening` in the next tenure's list (D-095).
 - [ ] **6.8** Export `docs/openapi.json` for the features so far, generated, no handwritten contract. needs: 6.7 [P-003]
 
 ## Phase 7: Fees and members

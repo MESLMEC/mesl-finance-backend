@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -96,3 +96,18 @@ class EntryLabelsOut(BaseModel):
     cost_center_id: int | None
     occurred_on: date
     source: IncomeSource | None
+
+
+class EntryOut(BaseModel):
+    id: int
+    tenure_id: int
+    kind: EntryKind
+    occurred_on: date
+    recorded_at: datetime
+    recorded_by: str
+    note: str
+    tag: str | None
+    cost_center_id: int | None
+    member_id: int | None
+    source: IncomeSource | None
+    corrected_from: int | None

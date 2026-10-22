@@ -26,6 +26,7 @@ from mesl_finance.envelopes.infrastructure.unit_of_work import SqlEnvelopeUnitOf
 from mesl_finance.ledger.api.router import router as ledger_router
 from mesl_finance.ledger.application.edit_labels import EditLabels
 from mesl_finance.ledger.application.fix_amount import FixAmount
+from mesl_finance.ledger.application.list_entries import ListEntries
 from mesl_finance.ledger.application.record_deposit import RecordDeposit
 from mesl_finance.ledger.application.record_expense import RecordExpense
 from mesl_finance.ledger.application.record_transfer import RecordTransfer
@@ -62,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.record_transfer = RecordTransfer(lambda actor: SqlLedgerUnitOfWork(engine, actor))
     app.state.fix_amount = FixAmount(lambda actor: SqlLedgerUnitOfWork(engine, actor))
     app.state.edit_labels = EditLabels(lambda actor: SqlLedgerUnitOfWork(engine, actor))
+    app.state.list_entries = ListEntries(lambda actor: SqlLedgerUnitOfWork(engine, actor))
 
     def envelope_unit_of_work(actor: str) -> SqlEnvelopeUnitOfWork:
         return SqlEnvelopeUnitOfWork(engine, actor)
