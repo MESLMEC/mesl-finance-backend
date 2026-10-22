@@ -589,3 +589,24 @@ Gates this session (final run): `uv run pytest` 393 passed; `uv run ruff check .
 `uv run ruff format --check .` "150 files already formatted"; `uv run pyright` "0 errors, 0 warnings,
 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL until this batch and the ROADMAP tick were
 written.
+
+## Added 2026-10-22 (thirty-second batch, step 6.8 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-096 | 2026-10-22 | Step 6.8 shape: every question was answered by the generic approval, so the brief's labelled suggestions stand (same pattern as D-062/D-064/D-066/D-070/D-076/D-079/D-082/D-086/D-088/D-090/D-093): (Q1=a) P-003 confirmed in its NARROWED form - publish only the generated `docs/openapi.json`; no handwritten `docs/api-contract.md`, because ROADMAP 6.8 says "no handwritten contract"; (Q2=a) CODE-WITH-TESTS with three tests, and the check that the committed file still matches a fresh export stays ROADMAP 12.2's; (Q3=a) the generator is `src/mesl_finance/export_openapi.py`, run as `PYTHONPATH=src uv run python -m mesl_finance.export_openapi`, writing `<repo>/docs/openapi.json`; (Q4=a) it builds the app from documented schema-only placeholder `Settings` values and opens no database connection, so exporting needs neither a server nor the app's secrets; (Q5=a) output is UTF-8 JSON with `indent=2`, `sort_keys=True` and exactly one trailing newline, and `info.version` stays FastAPI's default "0.1.0" (no step defines an app version). | "The user approved the step brief for:  (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 6.8, P-003, D-064 |
+| D-097 | 2026-10-22 | The step 6.8 tests are approved as written (3 cases in `tests/api/test_export_openapi.py`): exported document equals `create_app(...).openapi()`, OpenAPI "3.1.0", `info {"title": "MESL Finance", "version": "0.1.0"}`, the exact 16-operation inventory; byte-stable output with `components` first and two-space indent; a missing destination directory is created. Test file unchanged between approval and close. | "The user reviewed and approved the tests for:  (if empty, the step in this session)." | D-096, ROADMAP 6.8 |
+
+### Resolutions of earlier rows (nothing above was edited)
+
+| Row | Resolution |
+|---|---|
+| P-003 | accepted -> D-096, narrowed to the generated `docs/openapi.json` only; the handwritten `docs/api-contract.md` half is rejected |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-098 (proposed) | 2026-10-22 | Facts for later sessions. (1) `docs/openapi.json` at this step: sha256 `a52b20f5f1d006ec13f652d82dafbdd946ff8ff5838cdfd037a141bf639aaf09`, 41,574 bytes, 16 operations, root keys `components/info/openapi/paths`, `securitySchemes: HTTPBearer`, 25 component schemas. (2) Exporting is settings-independent and env-independent: the document was regenerated with `PYTHONPATH=src` only (no `.env`, no `MESL_*` variables) and the bytes were identical, which is why Q4=a's placeholders are safe. (3) The generated document carries only what FastAPI knows - success responses plus its own `422 HTTPValidationError` - so the RFC 9457 problem-JSON bodies (D-013, D-064) are absent; no step authorises `responses=` metadata, so a future contract step that wants them needs its own decision. (4) The hardcoded inventory in `tests/api/test_export_openapi.py:58-75` is the only assertion that catches a router silently disappearing from `create_app`, and every API step must extend it. (5) `export_openapi()` builds the app and never disposes the engine; no connection is ever checked out and the process exits, so nothing leaks - a later long-running caller would need `await engine.dispose()`. (6) Gate evidence: `uv run pytest` 396 passed (393 pre-existing + 3 new), `uv run ruff check .` "All checks passed!", `uv run ruff format --check .` "152 files already formatted", `uv run pyright` "0 errors, 0 warnings, 0 informations". | independent regeneration and byte comparison this session; gate runs 2026-10-22 |

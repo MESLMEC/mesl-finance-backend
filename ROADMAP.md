@@ -157,7 +157,11 @@ How the app needs are met with ZERO schema changes:
   never asks for an open tenure or commits. Only one tenure may be open at a time
   (db/schema.sql:40), so a cross-tenure read test must hand over via `close_tenure`, which
   leaves a carry-over `opening` in the next tenure's list (D-095).
-- [ ] **6.8** Export `docs/openapi.json` for the features so far, generated, no handwritten contract. needs: 6.7 [P-003]
+- [x] **6.8** Export `docs/openapi.json` for the features so far, generated, no handwritten contract. needs: 6.7 [P-003]
+  Notes: the artifact is produced by `PYTHONPATH=src uv run python -m mesl_finance.export_openapi`
+  from schema-only placeholder settings (no connection, no secrets); the test's
+  hardcoded operation inventory must grow with every API step, and the
+  committed-file freshness test stays 12.2's (D-096).
 
 ## Phase 7: Fees and members
 
