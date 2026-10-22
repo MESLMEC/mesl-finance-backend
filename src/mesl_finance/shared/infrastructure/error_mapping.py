@@ -16,6 +16,7 @@ _RAISE_EXCEPTION = "P0001"  # RAISE EXCEPTION inside the schema's triggers and f
 _FOREIGN_KEY_VIOLATION = "23503"
 _UNIQUE_VIOLATION = "23505"
 _CHECK_VIOLATION = "23514"  # a table CHECK, e.g. envelopes.target_cap >= 0
+_EXCLUSION_VIOLATION = "23P01"  # an EXCLUDE constraint, e.g. overlapping membership periods
 
 # message fragment (from db/schema.sql) -> domain error. Add a rule only together with its test.
 _RAISE_RULES: list[tuple[str, type[DomainError]]] = [
@@ -44,5 +45,9 @@ def map_db_error(exc: DBAPIError) -> DomainError | None:
     if sqlstate == _CHECK_VIOLATION:
         # PostgreSQL owns table CHECKs; the server text names the constraint
         # (step 5.1 Q6=a, pinned by the negative-cap API tests).
+        return RuleViolation(message)
+    if sqlstate == _EXCLUSION_VIOLATION:
+        # PostgreSQL owns the no-overlap rules (step 7.1 Q9=a, pinned by the
+        # membership-period tests).
         return RuleViolation(message)
     return None

@@ -31,6 +31,14 @@ from mesl_finance.ledger.application.record_deposit import RecordDeposit
 from mesl_finance.ledger.application.record_expense import RecordExpense
 from mesl_finance.ledger.application.record_transfer import RecordTransfer
 from mesl_finance.ledger.infrastructure.unit_of_work import SqlLedgerUnitOfWork
+from mesl_finance.members.api.router import router as members_router
+from mesl_finance.members.application.create_member import CreateMember
+from mesl_finance.members.application.edit_member import EditMember
+from mesl_finance.members.application.end_membership import EndMembership
+from mesl_finance.members.application.list_members import ListMembers
+from mesl_finance.members.application.list_membership_periods import ListMembershipPeriods
+from mesl_finance.members.application.start_membership import StartMembership
+from mesl_finance.members.infrastructure.unit_of_work import SqlMemberUnitOfWork
 from mesl_finance.shared.api.problems import install_error_handlers
 from mesl_finance.shared.infrastructure.database import create_engine
 from mesl_finance.shared.settings import Settings
@@ -82,9 +90,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.rename_cost_center = RenameCostCenter(cost_center_unit_of_work)
     app.state.set_cost_center_status = SetCostCenterStatus(cost_center_unit_of_work)
 
+    def member_unit_of_work(actor: str) -> SqlMemberUnitOfWork:
+        return SqlMemberUnitOfWork(engine, actor)
+
+    app.state.create_member = CreateMember(member_unit_of_work)
+    app.state.list_members = ListMembers(member_unit_of_work)
+    app.state.edit_member = EditMember(member_unit_of_work)
+    app.state.start_membership = StartMembership(member_unit_of_work)
+    app.state.end_membership = EndMembership(member_unit_of_work)
+    app.state.list_membership_periods = ListMembershipPeriods(member_unit_of_work)
+
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(ledger_router, prefix=API_PREFIX)
     app.include_router(envelopes_router, prefix=API_PREFIX)
     app.include_router(cost_centers_router, prefix=API_PREFIX)
+    app.include_router(members_router, prefix=API_PREFIX)
     return app

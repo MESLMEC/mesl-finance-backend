@@ -36,6 +36,9 @@ Coverage map of the ROADMAP 3.3 claims (one bullet per claim, step order):
   RuleViolation; P0001's 23503 -> UnknownReference), plus the one new 23505
   rule the roadmap line names - added together with these tests, /code
   never invents a rule without one.
+- ROADMAP 7.1's one new rule (an EXCLUDE violation, SQLSTATE 23P01, ->
+  RuleViolation; the membership-period overlap guard, db/schema.sql:101-102):
+    test_exclusion_violation_maps_to_a_rule_violation
 
 Library APIs verified in the installed source this session (AGENTS.md section 3):
 - sqlalchemy/exc.py:604-690 + 761-786: `DBAPIError(statement, params, orig,
@@ -56,6 +59,8 @@ Library APIs verified in the installed source this session (AGENTS.md section 3)
   attributes, so a fabricated instance reads them the same way;
 - asyncpg/exceptions/__init__.py:707: UndefinedTableError (sqlstate 42P01)
   is the "none of ours" pass-through case;
+- asyncpg/exceptions/__init__.py:432-433: ExclusionViolationError.sqlstate is
+  '23P01' (the membership-period overlap rule, ROADMAP 7.1);
 - the DB-backed tests use only the production path already verified in
   step 3.2 (SqlUnitOfWork.execute / .commit over AsyncConnection /
   AsyncTransaction) - no new library API is assumed;
@@ -242,3 +247,27 @@ def test_map_db_error_returns_none_for_a_generic_dbapi_error() -> None:
 
     unrelated = asyncpg.UndefinedTableError('relation "no_such_table" does not exist')
     assert map_db_error(DBAPIError("SELECT * FROM no_such_table", None, unrelated)) is None
+
+
+async def test_exclusion_violation_maps_to_a_rule_violation(engine: AsyncEngine) -> None:
+    """schema: `membership_periods` forbids overlapping periods with an EXCLUDE
+    constraint (db/schema.sql:101-102). The second INSERT raises SQLSTATE 23P01
+    (asyncpg/exceptions/__init__.py:432-433); ROADMAP 7.1 (brief Q9=a) adds the
+    one translator rule that turns it into a 409 `rule_violation` instead of
+    letting a raw DBAPIError escape."""
+    async with SqlUnitOfWork(engine, ACTOR) as uow:
+        member_id = (
+            await uow.execute("INSERT INTO members (name) VALUES ('A') RETURNING id")
+        ).scalar_one()
+        await uow.execute(
+            "INSERT INTO membership_periods (member_id, start_date)"
+            " VALUES (:member_id, DATE '2026-02-01')",
+            {"member_id": member_id},
+        )
+        with pytest.raises(RuleViolation) as exc:
+            await uow.execute(
+                "INSERT INTO membership_periods (member_id, start_date)"
+                " VALUES (:member_id, DATE '2026-03-01')",
+                {"member_id": member_id},
+            )
+    assert "exclusion" in exc.value.detail.lower()
