@@ -4,6 +4,7 @@ from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.entry import EntryKind
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
+from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
 from mesl_finance.ledger.domain.transfer import Transfer
 from mesl_finance.shared.ports import UnitOfWork
 
@@ -87,3 +88,18 @@ class FixAmountUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def ledger(self) -> FixAmountRepository: ...
+
+
+class LabelEditRepository(Protocol):
+    """What the label-edit action needs; the other slices keep their own ports."""
+
+    async def edit_labels(self, edit: LabelEdit) -> LabelView:
+        """Write the edit in one UPDATE; returns the entry's labels after the write."""
+        ...
+
+
+class LabelEditUnitOfWork(UnitOfWork, Protocol):
+    """The label-edit action's transaction scope."""
+
+    @property
+    def ledger(self) -> LabelEditRepository: ...

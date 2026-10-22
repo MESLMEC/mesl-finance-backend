@@ -146,7 +146,10 @@ How the app needs are met with ZERO schema changes:
   `validation_failed` (multi-line fixes, e.g. a transfer, need their own step). ONE
   transaction writes the mirroring reversal and the replacement; PostgreSQL keeps the
   once-only (`reverses_id`/`replaces_id`), tenure and overdraw walls (D-088).
-- [ ] **6.6** Label edit (note, tag, cost center, date, source). needs: 6.0, 6.2
+- [x] **6.6** Label edit (note, tag, cost center, date, source). needs: 6.0, 6.2
+  Notes: Q7=b - a blank note on transfer/sweep/reversal is refused by the app (422) after the
+  row read, not by the CHECK; 200 `{id,kind,note,tag,cost_center_id,occurred_on,source}`; any
+  non-opening kind is editable; own port (D-085); 35 tests (D-090/D-091).
 - [ ] **6.7** Entry list (`entries_current`). needs: 6.2
 - [ ] **6.8** Export `docs/openapi.json` for the features so far, generated, no handwritten contract. needs: 6.7 [P-003]
 

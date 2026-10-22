@@ -6,13 +6,16 @@ from mesl_finance.auth.api.dependencies import current_actor
 from mesl_finance.ledger.api.schemas import (
     DepositRequest,
     EntryCreated,
+    EntryLabelsOut,
     ExpenseCreated,
     ExpenseRequest,
     FixAmountCreated,
     FixAmountRequest,
+    LabelEditRequest,
     TransferCreated,
     TransferRequest,
 )
+from mesl_finance.ledger.application.edit_labels import EditLabels, EditLabelsCommand
 from mesl_finance.ledger.application.fix_amount import FixAmount, FixAmountCommand
 from mesl_finance.ledger.application.record_deposit import RecordDeposit, RecordDepositCommand
 from mesl_finance.ledger.application.record_expense import RecordExpense, RecordExpenseCommand
@@ -36,6 +39,10 @@ def get_record_transfer(request: Request) -> RecordTransfer:
 
 def get_fix_amount(request: Request) -> FixAmount:
     return cast(FixAmount, request.app.state.fix_amount)
+
+
+def get_edit_labels(request: Request) -> EditLabels:
+    return cast(EditLabels, request.app.state.edit_labels)
 
 
 @router.post("/deposits", status_code=201)
@@ -91,4 +98,30 @@ async def post_fix_amount(
         reversal_id=reversal_id,
         corrected_from=entry_id,
         balance=balance,
+    )
+
+
+@router.post("/entries/{entry_id}/edit-labels")
+async def post_edit_labels(
+    entry_id: int,
+    body: LabelEditRequest,
+    user: Annotated[str, Depends(current_actor)],
+    edit_labels: Annotated[EditLabels, Depends(get_edit_labels)],
+) -> EntryLabelsOut:
+    view = await edit_labels(
+        EditLabelsCommand(
+            entry_id=entry_id,
+            fields=frozenset(body.model_fields_set),
+            **body.model_dump(),
+        ),
+        actor=user,
+    )
+    return EntryLabelsOut(
+        id=view.id,
+        kind=view.kind,
+        note=view.note,
+        tag=view.tag,
+        cost_center_id=view.cost_center_id,
+        occurred_on=view.occurred_on,
+        source=view.source,
     )

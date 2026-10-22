@@ -1,7 +1,10 @@
+from typing import Any
+
 from mesl_finance.ledger.domain.deposit import Deposit
-from mesl_finance.ledger.domain.entry import EntryKind
+from mesl_finance.ledger.domain.entry import EntryKind, IncomeSource
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
+from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
 from mesl_finance.ledger.domain.transfer import Transfer
 from mesl_finance.shared.errors import (
     NoOpenTenure,
@@ -258,3 +261,68 @@ class SqlLedgerRepository:
             {"envelope_id": int(new_line.scalar_one())},
         )
         return replacement_id, reversal_id, kind, int(balance.scalar_one())
+
+    async def edit_labels(self, edit: LabelEdit) -> LabelView:
+        """Fix one entry's labels in one UPDATE; history is the schema's job.
+
+        The row is read FOR UPDATE so the merge of the request's fields onto
+        the current labels cannot race another edit. `tx_label_edit`
+        (db/schema.sql:376-410) refuses opening entries, closed tenures, a date
+        before the tenure opened, and writes `ledger_label_edits` naming
+        `app.actor`; the app refuses only a blank note that a kind needs
+        (step 6.6 Q7=b).
+        """
+        current = (
+            (
+                await self._uow.execute(
+                    """
+                SELECT kind, note, tag, cost_center_id, occurred_on, source
+                  FROM ledger_transactions WHERE id = :entry_id FOR UPDATE
+                """,
+                    {"entry_id": edit.entry_id},
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if current is None:
+            raise UnknownReference(f"entry {edit.entry_id} does not exist")
+        kind = EntryKind(current["kind"])
+        edit.validate_for(kind)
+        labels: dict[str, Any] = {
+            "note": current["note"],
+            "tag": current["tag"],
+            "cost_center_id": current["cost_center_id"],
+            "occurred_on": current["occurred_on"],
+            "source": current["source"],
+        }
+        for field in edit.fields:
+            labels[field] = getattr(edit, field)
+        source = labels["source"]
+        if isinstance(source, IncomeSource):
+            source = source.value
+        await self._uow.execute(
+            """
+            UPDATE ledger_transactions
+               SET note = :note, tag = :tag, cost_center_id = :cost_center_id,
+                   occurred_on = :occurred_on, source = :source
+             WHERE id = :entry_id
+            """,
+            {
+                "note": labels["note"],
+                "tag": labels["tag"],
+                "cost_center_id": labels["cost_center_id"],
+                "occurred_on": labels["occurred_on"],
+                "source": source,
+                "entry_id": edit.entry_id,
+            },
+        )
+        return LabelView(
+            id=edit.entry_id,
+            kind=kind,
+            note=labels["note"],
+            tag=labels["tag"],
+            cost_center_id=labels["cost_center_id"],
+            occurred_on=labels["occurred_on"],
+            source=IncomeSource(source) if source is not None else None,
+        )

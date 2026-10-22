@@ -76,3 +76,23 @@ class FixAmountCreated(BaseModel):
     reversal_id: int
     corrected_from: int
     balance: int
+
+
+class LabelEditRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: str | None = None
+    tag: str | None = None
+    cost_center_id: int | None = Field(default=None, strict=True)
+    occurred_on: date | None = None
+    source: IncomeSource | None = None
+
+
+class EntryLabelsOut(BaseModel):
+    id: int
+    kind: EntryKind
+    note: str
+    tag: str | None
+    cost_center_id: int | None
+    occurred_on: date
+    source: IncomeSource | None
