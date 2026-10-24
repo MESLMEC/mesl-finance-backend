@@ -172,7 +172,10 @@ How the app needs are met with ZERO schema changes:
   not the append-only trigger's P0001 (D-100).
 - [x] **7.1** Members and membership periods (start once, end once). needs: 6.2, 7.0
   Notes: CODE-WITH-TESTS, 41 new cases (D-101/D-102); `end` targets the member's LATEST period row so `period_guard` answers a second end with 409 and a member with no period with 404 - do not narrow it to `WHERE end_date IS NULL` (D-103).
-- [ ] **7.2** Fee rates and shutdown weeks (week and Sunday rules enforced by the database). needs: 7.1
+- [x] **7.2** Fee rates and shutdown weeks (week and Sunday rules enforced by the database). needs: 7.1
+  Notes: CODE-WITH-TESTS, 28 new cases (D-104/D-105); the adapter calls `set_shutdown()` itself, so
+  the Sunday/order/closed-tenure rules stay in PostgreSQL, no translator rule was needed, and a
+  second rate for the same Sunday is accepted (latest id wins) - do not add pre-checks.
 - [ ] **7.3** Member adjustments (waiver, credit_donation, opening, correction). needs: 7.1
 - [ ] **7.4** Fee payments and refunds (member-linked deposit and expense through the pool). needs: 6.3, 7.1
 - [ ] **7.5** Reads: `member_standing`, dues overview, `allocation_context`. needs: 7.2, 7.3, 7.4

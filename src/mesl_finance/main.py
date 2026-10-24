@@ -23,6 +23,12 @@ from mesl_finance.envelopes.application.list_envelopes import ListEnvelopes
 from mesl_finance.envelopes.application.rename_envelope import RenameEnvelope
 from mesl_finance.envelopes.application.update_envelope_settings import UpdateEnvelopeSettings
 from mesl_finance.envelopes.infrastructure.unit_of_work import SqlEnvelopeUnitOfWork
+from mesl_finance.fees.api.router import router as fees_router
+from mesl_finance.fees.application.create_fee_rate import CreateFeeRate
+from mesl_finance.fees.application.list_fee_rates import ListFeeRates
+from mesl_finance.fees.application.list_shutdown_events import ListShutdownEvents
+from mesl_finance.fees.application.set_shutdown import SetShutdown
+from mesl_finance.fees.infrastructure.unit_of_work import SqlFeeUnitOfWork
 from mesl_finance.ledger.api.router import router as ledger_router
 from mesl_finance.ledger.application.edit_labels import EditLabels
 from mesl_finance.ledger.application.fix_amount import FixAmount
@@ -100,10 +106,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.end_membership = EndMembership(member_unit_of_work)
     app.state.list_membership_periods = ListMembershipPeriods(member_unit_of_work)
 
+    def fee_unit_of_work(actor: str) -> SqlFeeUnitOfWork:
+        return SqlFeeUnitOfWork(engine, actor)
+
+    app.state.create_fee_rate = CreateFeeRate(fee_unit_of_work)
+    app.state.list_fee_rates = ListFeeRates(fee_unit_of_work)
+    app.state.set_shutdown = SetShutdown(fee_unit_of_work)
+    app.state.list_shutdown_events = ListShutdownEvents(fee_unit_of_work)
+
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(ledger_router, prefix=API_PREFIX)
     app.include_router(envelopes_router, prefix=API_PREFIX)
     app.include_router(cost_centers_router, prefix=API_PREFIX)
     app.include_router(members_router, prefix=API_PREFIX)
+    app.include_router(fees_router, prefix=API_PREFIX)
     return app

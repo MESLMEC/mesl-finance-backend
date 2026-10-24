@@ -653,3 +653,24 @@ Gates this session (final run): `uv run pytest` 467 passed (426 pre-existing + 4
 `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "177 files already
 formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS;
 item 7 FAIL until this batch and the ROADMAP tick were written.
+
+## Added 2026-10-24 (thirty-fifth batch, step 7.2 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-104 | 2026-10-24 | Step 7.2 shape, all eight questions as the brief's labelled suggestions: (Q1=a) a new `fees` feature with ONE `FeeRepository`; (Q2=a) the step carries both writes and reads; (Q3=a) one `POST /api/v1/shutdown-weeks` action with body `{from_week, to_week, is_shutdown=true, reason=""}` answering 201 `{"weeks": n}`, and undo is the same action with `is_shutdown=false`; (Q4=a) `POST /api/v1/fee-rates` takes `{effective_from, amount}` and a second rate for the same Sunday is accepted (the DB's `current_rate` keeps the latest id, db/schema.sql:113-115); (Q5=a) `amount` is strict `int` only - `10.5`, `true` and `"20"` are 422, while `0` and `-5` reach the table CHECK and answer 409; (Q6=a) `GET /api/v1/shutdown-weeks` returns the raw `shutdown_events` rows, the per-week latest-wins view belongs to 7.5; (Q7=a) the rate is global only, per-batch rates need DDL and stay unbuilt; (Q8=a) domain and API tests only, no DB-test port. Routes: `POST`/`GET /api/v1/fee-rates` and `POST`/`GET /api/v1/shutdown-weeks`; `GET /api/v1/fee-rates` in `(effective_from, id)` order and `GET /api/v1/shutdown-weeks` in `(week_start, id)` order; `recorded_by` is always the JWT actor. 28 new cases (6 domain, 13 rates API, 9 shutdown API) and the operation inventory grew 22 -> 26. | "The user approved the step brief for:  (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 7.2, D-005, D-099, D-105 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-105 (proposed) | 2026-10-24 | Facts for later sessions. (1) The CHECK constraints are named `fee_rates_amount_check` (`CHECK ((amount > 0))`), `fee_rates_effective_from_check` (`CHECK ((EXTRACT(dow FROM effective_from) = (0)::numeric))`) and `shutdown_events_week_start_check` (same Sunday test on `week_start`); the API tests assert the 409 bodies by those names. (2) `set_shutdown(date,date,boolean,text,text)` exists with `proacl` NULL, i.e. the default PUBLIC EXECUTE, so `labapp` may call it; it is not SECURITY DEFINER (same class as `allocate()` and `sweep_leftover()`), returns the number of weeks written, and `SELECT set_shutdown(:from_week, :to_week, :is_shutdown, :recorded_by, :reason)` works with bound parameters inside the app transaction (`fees/infrastructure/repository.py:56-73`). (3) No translator change was needed: the table CHECK answers 23514 -> `RuleViolation` (`shared/infrastructure/error_mapping.py:45-48`), the trigger and function messages ("weeks start on Sunday", "to-week is before from-week", "cannot be backdated", "belongs to a closed tenure") fall through P0001 -> `RuleViolation` (`:30-35`), and "before this tenure opened" already maps to `DateBeforeTenure` (`:21-24`). (4) Intentional shapes not to silently change: the two read use cases do NOT commit; each write commits once in its own use case; the adapter inserts and reads with RETURNING and no existence pre-checks, because PostgreSQL owns every rule. `docs/openapi.json` was deliberately not regenerated (22 -> 26 operations is 7.6's job). (5) Gate evidence: `uv run pytest` 495 passed (467 pre-existing + 28 new), `uv run ruff check .` "All checks passed!", `uv run ruff format --check .` "199 files already formatted", `uv run pyright` "0 errors, 0 warnings, 0 informations". (6) Environment: at `/code` start nothing listened on `localhost:5434` and no PostgreSQL container existed (only exited adminer/velxio), so every test errored with `OSError ... Connect call failed ('127.0.0.1', 5434)`; the user started the dev DB, after which all gates ran. Same class as D-032. | `pg_constraint` query on `mesl_test_template`; `pg_proc` for `set_shutdown`; `db/schema.sql:106-125,220-233,1193-1194`; `error_mapping.py` read; gate runs and `ss -ltn` output this session |
+
+### Evidence for the step close
+
+Gates this session (final run): `uv run pytest` 495 passed (467 pre-existing + 28 new);
+`uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "199 files already
+formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS;
+item 7 FAIL until this batch and the ROADMAP tick were written.

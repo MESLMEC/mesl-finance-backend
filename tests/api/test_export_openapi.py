@@ -19,7 +19,7 @@ What these tests pin (the API /code must provide): a callable
 writes FastAPI's OWN document for `create_app(...)`:
 - the parsed document equals the document the app factory produces, it is OpenAPI
   "3.1.0", its `info` is `{"title": "MESL Finance", "version": "0.1.0"}`, and its
-  operations are exactly the 16 the routes built so far define (the inventory below;
+  operations are exactly the ones the routes built so far define (the inventory below;
   an API step that adds a route must extend it);
 - two runs produce byte-identical output, with `components` first and two-space
   indentation (what makes a future diff a real contract change);
@@ -59,8 +59,10 @@ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("GET", "/api/v1/cost-centers"),
     ("GET", "/api/v1/entries"),
     ("GET", "/api/v1/envelopes"),
+    ("GET", "/api/v1/fee-rates"),
     ("GET", "/api/v1/members"),
     ("GET", "/api/v1/members/{member_id}/periods"),
+    ("GET", "/api/v1/shutdown-weeks"),
     ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/cost-centers"),
     ("POST", "/api/v1/cost-centers/{cost_center_id}/rename"),
@@ -73,10 +75,12 @@ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("POST", "/api/v1/envelopes/{envelope_id}/rename"),
     ("POST", "/api/v1/envelopes/{envelope_id}/settings"),
     ("POST", "/api/v1/expenses"),
+    ("POST", "/api/v1/fee-rates"),
     ("POST", "/api/v1/members"),
     ("POST", "/api/v1/members/{member_id}/edit"),
     ("POST", "/api/v1/members/{member_id}/periods/end"),
     ("POST", "/api/v1/members/{member_id}/periods/start"),
+    ("POST", "/api/v1/shutdown-weeks"),
     ("POST", "/api/v1/transfers"),
 ]
 
