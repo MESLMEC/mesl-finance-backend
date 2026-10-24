@@ -1,6 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from mesl_finance.members.domain.adjustment import AdjustmentKind
 
 
 class MemberOut(BaseModel):
@@ -43,3 +45,23 @@ class EndPeriodRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     end_date: date
+
+
+class AdjustmentOut(BaseModel):
+    id: int
+    member_id: int
+    kind: str
+    amount: int
+    occurred_on: date
+    note: str
+    recorded_at: datetime
+    recorded_by: str
+
+
+class CreateAdjustmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: AdjustmentKind
+    amount: int = Field(strict=True, description="Signed whole BDT; positive adds credit")
+    occurred_on: date
+    note: str = ""

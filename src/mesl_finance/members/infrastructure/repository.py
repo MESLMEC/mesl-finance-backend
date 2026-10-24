@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Any
 
+from mesl_finance.members.domain.adjustment import AdjustmentView, MemberAdjustment
 from mesl_finance.members.domain.member import (
     Member,
     MembershipPeriod,
@@ -122,3 +123,60 @@ class SqlMemberRepository:
             {"member_id": member_id},
         )
         return [_period_view(row) for row in result.all()]
+
+
+def _adjustment_view(row: Any) -> AdjustmentView:
+    return AdjustmentView(
+        id=int(row[0]),
+        member_id=int(row[1]),
+        kind=str(row[2]),
+        amount=int(row[3]),
+        occurred_on=row[4],
+        note=str(row[5]),
+        recorded_at=row[6],
+        recorded_by=str(row[7]),
+    )
+
+
+class SqlAdjustmentRepository:
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def add(self, adjustment: MemberAdjustment, recorded_by: str) -> AdjustmentView | None:
+        exists = await self._uow.execute(
+            "SELECT 1 FROM members WHERE id = :id", {"id": adjustment.member_id}
+        )
+        if exists.first() is None:
+            return None
+        result = await self._uow.execute(
+            """
+            INSERT INTO member_adjustments
+                (member_id, kind, amount, occurred_on, recorded_by, note)
+            VALUES (:member_id, :kind, :amount, :occurred_on, :recorded_by, :note)
+            RETURNING id, member_id, kind, amount, occurred_on, note, recorded_at, recorded_by
+            """,
+            {
+                "member_id": adjustment.member_id,
+                "kind": adjustment.kind.value,
+                "amount": adjustment.amount,
+                "occurred_on": adjustment.occurred_on,
+                "recorded_by": recorded_by,
+                "note": adjustment.note,
+            },
+        )
+        return _adjustment_view(result.one())
+
+    async def list_for(self, member_id: int) -> list[AdjustmentView] | None:
+        exists = await self._uow.execute("SELECT 1 FROM members WHERE id = :id", {"id": member_id})
+        if exists.first() is None:
+            return None
+        result = await self._uow.execute(
+            """
+            SELECT id, member_id, kind, amount, occurred_on, note, recorded_at, recorded_by
+            FROM member_adjustments
+            WHERE member_id = :member_id
+            ORDER BY id
+            """,
+            {"member_id": member_id},
+        )
+        return [_adjustment_view(row) for row in result.all()]

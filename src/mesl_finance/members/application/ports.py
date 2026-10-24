@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Protocol
 
+from mesl_finance.members.domain.adjustment import AdjustmentView, MemberAdjustment
 from mesl_finance.members.domain.member import (
     Member,
     MembershipPeriod,
@@ -45,3 +46,20 @@ class MemberUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def members(self) -> MemberRepository: ...
+
+
+class AdjustmentRepository(Protocol):
+    async def add(self, adjustment: MemberAdjustment, recorded_by: str) -> AdjustmentView | None:
+        """Write one adjustment; None when the member does not exist."""
+        ...
+
+    async def list_for(self, member_id: int) -> list[AdjustmentView] | None:
+        """One member's adjustments in id order; None when the member does not exist."""
+        ...
+
+
+class AdjustmentUnitOfWork(UnitOfWork, Protocol):
+    """The adjustments' transaction scope: the shared scope plus its repository."""
+
+    @property
+    def adjustments(self) -> AdjustmentRepository: ...

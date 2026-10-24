@@ -41,8 +41,10 @@ from mesl_finance.members.api.router import router as members_router
 from mesl_finance.members.application.create_member import CreateMember
 from mesl_finance.members.application.edit_member import EditMember
 from mesl_finance.members.application.end_membership import EndMembership
+from mesl_finance.members.application.list_adjustments import ListAdjustments
 from mesl_finance.members.application.list_members import ListMembers
 from mesl_finance.members.application.list_membership_periods import ListMembershipPeriods
+from mesl_finance.members.application.record_adjustment import RecordAdjustment
 from mesl_finance.members.application.start_membership import StartMembership
 from mesl_finance.members.infrastructure.unit_of_work import SqlMemberUnitOfWork
 from mesl_finance.shared.api.problems import install_error_handlers
@@ -105,6 +107,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.start_membership = StartMembership(member_unit_of_work)
     app.state.end_membership = EndMembership(member_unit_of_work)
     app.state.list_membership_periods = ListMembershipPeriods(member_unit_of_work)
+    app.state.record_adjustment = RecordAdjustment(member_unit_of_work)
+    app.state.list_adjustments = ListAdjustments(member_unit_of_work)
 
     def fee_unit_of_work(actor: str) -> SqlFeeUnitOfWork:
         return SqlFeeUnitOfWork(engine, actor)
