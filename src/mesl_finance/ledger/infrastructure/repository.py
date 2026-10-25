@@ -6,6 +6,7 @@ from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
+from mesl_finance.ledger.domain.refund import Refund
 from mesl_finance.ledger.domain.transfer import Transfer
 from mesl_finance.shared.errors import (
     NoOpenTenure,
@@ -99,6 +100,50 @@ class SqlLedgerRepository:
         balance = await self._uow.execute(
             "SELECT balance FROM envelope_balances WHERE id = :envelope_id",
             {"envelope_id": expense.envelope_id},
+        )
+        return entry_id, int(balance.scalar_one())
+
+    async def add_refund(self, tenure_id: int, refund: Refund, recorded_by: str) -> tuple[int, int]:
+        """A member-linked expense; PostgreSQL forces it through the pool.
+
+        `check_shape` (db/schema.sql:364-367) refuses a member-linked line
+        outside the pool, so the pool is resolved here and the one negative
+        line is written against it; `member_link_kinds` (:260) allows the
+        member on an `expense`.
+        """
+        header = await self._uow.execute(
+            """
+            INSERT INTO ledger_transactions
+                   (tenure_id, kind, occurred_on, recorded_by, note, tag,
+                    cost_center_id, member_id)
+            VALUES (:tenure_id, 'expense', :occurred_on, :recorded_by, :note, :tag,
+                    :cost_center_id, :member_id)
+            RETURNING id
+            """,
+            {
+                "tenure_id": tenure_id,
+                "occurred_on": refund.occurred_on,
+                "recorded_by": recorded_by,
+                "note": refund.note,
+                "tag": refund.tag,
+                "cost_center_id": refund.cost_center_id,
+                "member_id": refund.member_id,
+            },
+        )
+        entry_id = int(header.scalar_one())
+        await self._uow.execute(
+            """
+            INSERT INTO ledger_lines (transaction_id, envelope_id, amount)
+            SELECT CAST(:entry_id AS bigint), e.id, CAST(:amount AS integer)
+              FROM envelopes e WHERE e.is_pool
+            """,
+            {"entry_id": entry_id, "amount": -refund.amount},
+        )
+        balance = await self._uow.execute(
+            """
+            SELECT balance FROM envelope_balances
+             WHERE id = (SELECT id FROM envelopes WHERE is_pool)
+            """
         )
         return entry_id, int(balance.scalar_one())
 

@@ -43,6 +43,23 @@ class ExpenseCreated(BaseModel):
     balance: int
 
 
+class RefundRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: int = Field(strict=True, gt=0, description="Whole BDT returned to the member")
+    occurred_on: date
+    member_id: int = Field(description="The member the money is returned to")
+    note: str = ""
+    tag: str | None = None
+    cost_center_id: int | None = None
+
+
+class RefundCreated(BaseModel):
+    id: int
+    kind: EntryKind
+    balance: int
+
+
 class TransferRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

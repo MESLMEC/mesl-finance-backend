@@ -6,6 +6,7 @@ from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
+from mesl_finance.ledger.domain.refund import Refund
 from mesl_finance.ledger.domain.transfer import Transfer
 from mesl_finance.shared.ports import UnitOfWork
 
@@ -119,3 +120,22 @@ class EntryListUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def ledger(self) -> EntryListRepository: ...
+
+
+class RefundRepository(Protocol):
+    """What the refund action needs; the other slices keep their own ports."""
+
+    async def open_tenure_id(self) -> int:
+        """The id of the open tenure, or raise NoOpenTenure."""
+        ...
+
+    async def add_refund(self, tenure_id: int, refund: Refund, recorded_by: str) -> tuple[int, int]:
+        """Write the member-linked expense out of the pool; (id, pool balance)."""
+        ...
+
+
+class RefundUnitOfWork(UnitOfWork, Protocol):
+    """The refund action's transaction scope."""
+
+    @property
+    def ledger(self) -> RefundRepository: ...

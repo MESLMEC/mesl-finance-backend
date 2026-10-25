@@ -13,6 +13,8 @@ from mesl_finance.ledger.api.schemas import (
     FixAmountCreated,
     FixAmountRequest,
     LabelEditRequest,
+    RefundCreated,
+    RefundRequest,
     TransferCreated,
     TransferRequest,
 )
@@ -21,6 +23,7 @@ from mesl_finance.ledger.application.fix_amount import FixAmount, FixAmountComma
 from mesl_finance.ledger.application.list_entries import ListEntries
 from mesl_finance.ledger.application.record_deposit import RecordDeposit, RecordDepositCommand
 from mesl_finance.ledger.application.record_expense import RecordExpense, RecordExpenseCommand
+from mesl_finance.ledger.application.record_refund import RecordRefund, RecordRefundCommand
 from mesl_finance.ledger.application.record_transfer import RecordTransfer, RecordTransferCommand
 from mesl_finance.ledger.domain.entry import EntryKind
 from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
@@ -34,6 +37,10 @@ def get_record_deposit(request: Request) -> RecordDeposit:
 
 def get_record_expense(request: Request) -> RecordExpense:
     return cast(RecordExpense, request.app.state.record_expense)
+
+
+def get_record_refund(request: Request) -> RecordRefund:
+    return cast(RecordRefund, request.app.state.record_refund)
 
 
 def get_record_transfer(request: Request) -> RecordTransfer:
@@ -70,6 +77,16 @@ async def post_expense(
 ) -> ExpenseCreated:
     entry_id, balance = await record_expense(RecordExpenseCommand(**body.model_dump()), actor=user)
     return ExpenseCreated(id=entry_id, kind=EntryKind.EXPENSE, balance=balance)
+
+
+@router.post("/refunds", status_code=201)
+async def post_refund(
+    body: RefundRequest,
+    user: Annotated[str, Depends(current_actor)],
+    record_refund: Annotated[RecordRefund, Depends(get_record_refund)],
+) -> RefundCreated:
+    entry_id, balance = await record_refund(RecordRefundCommand(**body.model_dump()), actor=user)
+    return RefundCreated(id=entry_id, kind=EntryKind.EXPENSE, balance=balance)
 
 
 @router.post("/transfers", status_code=201)

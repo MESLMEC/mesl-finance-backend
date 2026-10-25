@@ -35,6 +35,7 @@ from mesl_finance.ledger.application.fix_amount import FixAmount
 from mesl_finance.ledger.application.list_entries import ListEntries
 from mesl_finance.ledger.application.record_deposit import RecordDeposit
 from mesl_finance.ledger.application.record_expense import RecordExpense
+from mesl_finance.ledger.application.record_refund import RecordRefund
 from mesl_finance.ledger.application.record_transfer import RecordTransfer
 from mesl_finance.ledger.infrastructure.unit_of_work import SqlLedgerUnitOfWork
 from mesl_finance.members.api.router import router as members_router
@@ -76,6 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.record_deposit = RecordDeposit(lambda actor: SqlLedgerUnitOfWork(engine, actor))
     app.state.record_expense = RecordExpense(lambda actor: SqlLedgerUnitOfWork(engine, actor))
+    app.state.record_refund = RecordRefund(lambda actor: SqlLedgerUnitOfWork(engine, actor))
     app.state.record_transfer = RecordTransfer(lambda actor: SqlLedgerUnitOfWork(engine, actor))
     app.state.fix_amount = FixAmount(lambda actor: SqlLedgerUnitOfWork(engine, actor))
     app.state.edit_labels = EditLabels(lambda actor: SqlLedgerUnitOfWork(engine, actor))

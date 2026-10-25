@@ -180,7 +180,11 @@ How the app needs are met with ZERO schema changes:
   Notes: CODE-WITH-TESTS, 29 new cases (D-106/D-107); `POST`/`GET /api/v1/members/{id}/adjustments`,
   signed amount with the kind signs/date/zero rules left to PostgreSQL, a blank note refused by the
   app as 422, no translator rule needed, and `docs/openapi.json` stays 7.6's (D-108).
-- [ ] **7.4** Fee payments and refunds (member-linked deposit and expense through the pool). needs: 6.3, 7.1
+- [x] **7.4** Fee payments and refunds (member-linked deposit and expense through the pool). needs: 6.3, 7.1
+  Notes: CODE-WITH-TESTS, 21 new cases (D-109/D-110); the payment half already existed at
+  `POST /api/v1/deposits` (`source="weekly_fee"` + `member_id`), so the step adds only
+  `POST /api/v1/refunds` (body has NO envelope; the adapter resolves the pool, response
+  `201 {"id","kind","balance"}`) with no member-credit cap; `docs/openapi.json` stays 7.6's.
 - [ ] **7.5** Reads: `member_standing`, dues overview, `allocation_context`. needs: 7.2, 7.3, 7.4
 - [ ] **7.6** Refresh `docs/openapi.json`. needs: 7.5 [P-003]
 
