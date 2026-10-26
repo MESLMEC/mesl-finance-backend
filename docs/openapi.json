@@ -1,6 +1,90 @@
 {
   "components": {
     "schemas": {
+      "AdjustmentKind": {
+        "description": "The `adjustment_kind` enum (db/schema.sql:128).",
+        "enum": [
+          "waiver",
+          "credit_donation",
+          "opening",
+          "correction"
+        ],
+        "title": "AdjustmentKind",
+        "type": "string"
+      },
+      "AdjustmentOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "member_id": {
+            "title": "Member Id",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "title": "Recorded By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "member_id",
+          "kind",
+          "amount",
+          "occurred_on",
+          "note",
+          "recorded_at",
+          "recorded_by"
+        ],
+        "title": "AdjustmentOut",
+        "type": "object"
+      },
+      "AllocationContextOut": {
+        "properties": {
+          "member_credit_held": {
+            "title": "Member Credit Held",
+            "type": "integer"
+          },
+          "pool_after_member_credit": {
+            "title": "Pool After Member Credit",
+            "type": "integer"
+          },
+          "pool_balance": {
+            "title": "Pool Balance",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pool_balance",
+          "member_credit_held",
+          "pool_after_member_credit"
+        ],
+        "title": "AllocationContextOut",
+        "type": "object"
+      },
       "CostCenterOut": {
         "properties": {
           "id": {
@@ -27,6 +111,36 @@
           "status"
         ],
         "title": "CostCenterOut",
+        "type": "object"
+      },
+      "CreateAdjustmentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Signed whole BDT; positive adds credit",
+            "title": "Amount",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AdjustmentKind"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "amount",
+          "occurred_on"
+        ],
+        "title": "CreateAdjustmentRequest",
         "type": "object"
       },
       "CreateCostCenterRequest": {
@@ -82,6 +196,57 @@
           "name"
         ],
         "title": "CreateEnvelopeRequest",
+        "type": "object"
+      },
+      "CreateFeeRateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Whole BDT per member per week",
+            "title": "Amount",
+            "type": "integer"
+          },
+          "effective_from": {
+            "format": "date",
+            "title": "Effective From",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effective_from",
+          "amount"
+        ],
+        "title": "CreateFeeRateRequest",
+        "type": "object"
+      },
+      "CreateMemberRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "batch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateMemberRequest",
         "type": "object"
       },
       "DepositRequest": {
@@ -159,6 +324,61 @@
           "source"
         ],
         "title": "DepositRequest",
+        "type": "object"
+      },
+      "EditMemberRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "batch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "EditMemberRequest",
+        "type": "object"
+      },
+      "EndPeriodRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "end_date"
+        ],
+        "title": "EndPeriodRequest",
         "type": "object"
       },
       "EntryCreated": {
@@ -516,6 +736,41 @@
         "title": "ExpenseRequest",
         "type": "object"
       },
+      "FeeRateOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "integer"
+          },
+          "effective_from": {
+            "format": "date",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "title": "Recorded By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "effective_from",
+          "amount",
+          "recorded_at",
+          "recorded_by"
+        ],
+        "title": "FeeRateOut",
+        "type": "object"
+      },
       "FixAmountCreated": {
         "properties": {
           "balance": {
@@ -684,6 +939,155 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MemberOut": {
+        "properties": {
+          "batch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "batch",
+          "note"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
+      "MembershipPeriodOut": {
+        "properties": {
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "member_id": {
+            "title": "Member Id",
+            "type": "integer"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "member_id",
+          "start_date",
+          "end_date"
+        ],
+        "title": "MembershipPeriodOut",
+        "type": "object"
+      },
+      "RefundCreated": {
+        "properties": {
+          "balance": {
+            "title": "Balance",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EntryKind"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "balance"
+        ],
+        "title": "RefundCreated",
+        "type": "object"
+      },
+      "RefundRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Whole BDT returned to the member",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount",
+            "type": "integer"
+          },
+          "cost_center_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Center Id"
+          },
+          "member_id": {
+            "description": "The member the money is returned to",
+            "title": "Member Id",
+            "type": "integer"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          }
+        },
+        "required": [
+          "amount",
+          "occurred_on",
+          "member_id"
+        ],
+        "title": "RefundRequest",
+        "type": "object"
+      },
       "RenameCostCenterRequest": {
         "additionalProperties": false,
         "properties": {
@@ -724,6 +1128,166 @@
           "status"
         ],
         "title": "SetCostCenterStatusRequest",
+        "type": "object"
+      },
+      "SetShutdownRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "from_week": {
+            "format": "date",
+            "title": "From Week",
+            "type": "string"
+          },
+          "is_shutdown": {
+            "default": true,
+            "title": "Is Shutdown",
+            "type": "boolean"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "to_week": {
+            "format": "date",
+            "title": "To Week",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_week",
+          "to_week"
+        ],
+        "title": "SetShutdownRequest",
+        "type": "object"
+      },
+      "ShutdownEventOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_shutdown": {
+            "title": "Is Shutdown",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "week_start",
+          "is_shutdown",
+          "reason",
+          "recorded_at",
+          "recorded_by"
+        ],
+        "title": "ShutdownEventOut",
+        "type": "object"
+      },
+      "ShutdownResult": {
+        "properties": {
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weeks"
+        ],
+        "title": "ShutdownResult",
+        "type": "object"
+      },
+      "StandingOut": {
+        "properties": {
+          "balance": {
+            "title": "Balance",
+            "type": "integer"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "is_member_now": {
+            "title": "Is Member Now",
+            "type": "boolean"
+          },
+          "member_id": {
+            "title": "Member Id",
+            "type": "integer"
+          },
+          "member_name": {
+            "title": "Member Name",
+            "type": "string"
+          },
+          "oldest_unpaid_week": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Unpaid Week"
+          },
+          "owed": {
+            "title": "Owed",
+            "type": "integer"
+          },
+          "weeks_overdue": {
+            "title": "Weeks Overdue",
+            "type": "integer"
+          },
+          "weeks_owed": {
+            "title": "Weeks Owed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "member_id",
+          "member_name",
+          "is_member_now",
+          "weeks_owed",
+          "owed",
+          "credits",
+          "balance",
+          "weeks_overdue",
+          "oldest_unpaid_week"
+        ],
+        "title": "StandingOut",
+        "type": "object"
+      },
+      "StartPeriodRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date"
+        ],
+        "title": "StartPeriodRequest",
         "type": "object"
       },
       "TokenResponse": {
@@ -893,6 +1457,32 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/allocation-context": {
+      "get": {
+        "operationId": "get_allocation_context_view_api_v1_allocation_context_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationContextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Allocation Context View",
+        "tags": [
+          "envelopes"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",
@@ -1209,6 +1799,36 @@
         "summary": "Post Deposit",
         "tags": [
           "ledger"
+        ]
+      }
+    },
+    "/api/v1/dues": {
+      "get": {
+        "operationId": "get_dues_api_v1_dues_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StandingOut"
+                  },
+                  "title": "Response Get Dues Api V1 Dues Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Dues",
+        "tags": [
+          "fees"
         ]
       }
     },
@@ -1662,6 +2282,602 @@
         "summary": "Post Expense",
         "tags": [
           "ledger"
+        ]
+      }
+    },
+    "/api/v1/fee-rates": {
+      "get": {
+        "operationId": "get_fee_rates_api_v1_fee_rates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeeRateOut"
+                  },
+                  "title": "Response Get Fee Rates Api V1 Fee Rates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Fee Rates",
+        "tags": [
+          "fees"
+        ]
+      },
+      "post": {
+        "operationId": "post_fee_rate_api_v1_fee_rates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeeRateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeRateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Fee Rate",
+        "tags": [
+          "fees"
+        ]
+      }
+    },
+    "/api/v1/members": {
+      "get": {
+        "operationId": "get_members_api_v1_members_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberOut"
+                  },
+                  "title": "Response Get Members Api V1 Members Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Members",
+        "tags": [
+          "members"
+        ]
+      },
+      "post": {
+        "operationId": "post_member_api_v1_members_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Member",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/members/{member_id}/adjustments": {
+      "get": {
+        "operationId": "get_adjustments_api_v1_members__member_id__adjustments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdjustmentOut"
+                  },
+                  "title": "Response Get Adjustments Api V1 Members  Member Id  Adjustments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Adjustments",
+        "tags": [
+          "members"
+        ]
+      },
+      "post": {
+        "operationId": "post_adjustment_api_v1_members__member_id__adjustments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdjustmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdjustmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Adjustment",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/members/{member_id}/edit": {
+      "post": {
+        "operationId": "post_edit_api_v1_members__member_id__edit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Edit",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/members/{member_id}/periods": {
+      "get": {
+        "operationId": "get_periods_api_v1_members__member_id__periods_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MembershipPeriodOut"
+                  },
+                  "title": "Response Get Periods Api V1 Members  Member Id  Periods Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Periods",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/members/{member_id}/periods/end": {
+      "post": {
+        "operationId": "post_end_period_api_v1_members__member_id__periods_end_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndPeriodRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipPeriodOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post End Period",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/members/{member_id}/periods/start": {
+      "post": {
+        "operationId": "post_start_period_api_v1_members__member_id__periods_start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartPeriodRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipPeriodOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Start Period",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/refunds": {
+      "post": {
+        "operationId": "post_refund_api_v1_refunds_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Refund",
+        "tags": [
+          "ledger"
+        ]
+      }
+    },
+    "/api/v1/shutdown-weeks": {
+      "get": {
+        "operationId": "get_shutdown_weeks_api_v1_shutdown_weeks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShutdownEventOut"
+                  },
+                  "title": "Response Get Shutdown Weeks Api V1 Shutdown Weeks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Shutdown Weeks",
+        "tags": [
+          "fees"
+        ]
+      },
+      "post": {
+        "operationId": "post_shutdown_weeks_api_v1_shutdown_weeks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetShutdownRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShutdownResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Shutdown Weeks",
+        "tags": [
+          "fees"
         ]
       }
     },

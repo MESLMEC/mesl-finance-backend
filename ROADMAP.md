@@ -191,7 +191,10 @@ How the app needs are met with ZERO schema changes:
   `GET /api/v1/allocation-context` returns the three ints; both reads close without a commit and
   never call `open_tenure`, and a missing pool row (NULL `pool_balance`) stays out of scope;
   inventory 29 -> 31, `docs/openapi.json` stays 7.6's.
-- [ ] **7.6** Refresh `docs/openapi.json`. needs: 7.5 [P-003]
+- [x] **7.6** Refresh `docs/openapi.json`. needs: 7.5 [P-003]
+  Notes: NO-TEST (D-113): regenerated with the documented command, so the file now
+  documents 31 operations / 43 schemas (6.8 snapshot: 16 / 25) and equals a fresh export
+  byte for byte; every later API step reruns it, the freshness test stays 12.2's (D-114).
 
 ## Phase 8: Allocation and sweeps
 
