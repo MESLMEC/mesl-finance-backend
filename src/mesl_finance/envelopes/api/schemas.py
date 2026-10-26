@@ -31,3 +31,9 @@ class EnvelopeSettingsRequest(BaseModel):
 
     target_cap: int | None
     alloc_priority: int | None
+
+
+class AllocationContextOut(BaseModel):
+    pool_balance: int
+    member_credit_held: int
+    pool_after_member_credit: int

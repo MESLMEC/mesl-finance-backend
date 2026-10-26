@@ -185,7 +185,12 @@ How the app needs are met with ZERO schema changes:
   `POST /api/v1/deposits` (`source="weekly_fee"` + `member_id`), so the step adds only
   `POST /api/v1/refunds` (body has NO envelope; the adapter resolves the pool, response
   `201 {"id","kind","balance"}`) with no member-credit cap; `docs/openapi.json` stays 7.6's.
-- [ ] **7.5** Reads: `member_standing`, dues overview, `allocation_context`. needs: 7.2, 7.3, 7.4
+- [x] **7.5** Reads: `member_standing`, dues overview, `allocation_context`. needs: 7.2, 7.3, 7.4
+  Notes: CODE-WITH-TESTS, 15 new cases (D-111/D-112); `GET /api/v1/dues` returns every row in the
+  view's own order (`who_id`/`who_name` exposed as `member_id`/`member_name`, no `as_of`) and
+  `GET /api/v1/allocation-context` returns the three ints; both reads close without a commit and
+  never call `open_tenure`, and a missing pool row (NULL `pool_balance`) stays out of scope;
+  inventory 29 -> 31, `docs/openapi.json` stays 7.6's.
 - [ ] **7.6** Refresh `docs/openapi.json`. needs: 7.5 [P-003]
 
 ## Phase 8: Allocation and sweeps

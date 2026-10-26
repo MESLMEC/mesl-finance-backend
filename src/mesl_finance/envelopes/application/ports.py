@@ -1,5 +1,6 @@
 from typing import Protocol
 
+from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
 from mesl_finance.envelopes.domain.envelope import Envelope, EnvelopeView
 from mesl_finance.shared.ports import UnitOfWork
 
@@ -33,3 +34,18 @@ class EnvelopeUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def envelopes(self) -> EnvelopeRepository: ...
+
+
+class AllocationContextRepository(Protocol):
+    """What the allocation header read needs; the write slices keep their own port."""
+
+    async def get_allocation_context(self) -> AllocationContextView:
+        """The one ``allocation_context`` row."""
+        ...
+
+
+class AllocationContextUnitOfWork(UnitOfWork, Protocol):
+    """The allocation header read's transaction scope."""
+
+    @property
+    def allocation_context(self) -> AllocationContextRepository: ...

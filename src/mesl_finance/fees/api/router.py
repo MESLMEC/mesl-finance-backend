@@ -9,11 +9,14 @@ from mesl_finance.fees.api.schemas import (
     SetShutdownRequest,
     ShutdownEventOut,
     ShutdownResult,
+    StandingOut,
 )
 from mesl_finance.fees.application.create_fee_rate import CreateFeeRate, CreateFeeRateCommand
+from mesl_finance.fees.application.list_dues import ListDues
 from mesl_finance.fees.application.list_fee_rates import ListFeeRates
 from mesl_finance.fees.application.list_shutdown_events import ListShutdownEvents
 from mesl_finance.fees.application.set_shutdown import SetShutdown, SetShutdownCommand
+from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRateView
 from mesl_finance.fees.domain.shutdown import ShutdownEventView
 
@@ -26,6 +29,10 @@ def get_create_fee_rate(request: Request) -> CreateFeeRate:
 
 def get_list_fee_rates(request: Request) -> ListFeeRates:
     return cast(ListFeeRates, request.app.state.list_fee_rates)
+
+
+def get_list_dues(request: Request) -> ListDues:
+    return cast(ListDues, request.app.state.list_dues)
 
 
 def get_set_shutdown(request: Request) -> SetShutdown:
@@ -43,6 +50,20 @@ def _rate_out(view: FeeRateView) -> FeeRateOut:
         amount=view.amount,
         recorded_at=view.recorded_at,
         recorded_by=view.recorded_by,
+    )
+
+
+def _standing_out(view: StandingView) -> StandingOut:
+    return StandingOut(
+        member_id=view.member_id,
+        member_name=view.member_name,
+        is_member_now=view.is_member_now,
+        weeks_owed=view.weeks_owed,
+        owed=view.owed,
+        credits=view.credits,
+        balance=view.balance,
+        weeks_overdue=view.weeks_overdue,
+        oldest_unpaid_week=view.oldest_unpaid_week,
     )
 
 
@@ -100,3 +121,12 @@ async def get_shutdown_weeks(
 ) -> list[ShutdownEventOut]:
     views = await list_shutdown_events(actor=user)
     return [_event_out(view) for view in views]
+
+
+@router.get("/dues")
+async def get_dues(
+    user: Annotated[str, Depends(current_actor)],
+    list_dues: Annotated[ListDues, Depends(get_list_dues)],
+) -> list[StandingOut]:
+    views = await list_dues(actor=user)
+    return [_standing_out(view) for view in views]

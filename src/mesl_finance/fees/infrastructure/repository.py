@@ -1,5 +1,6 @@
 from typing import Any
 
+from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRate, FeeRateView
 from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownRange
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
@@ -83,3 +84,35 @@ class SqlFeeRepository:
             """
         )
         return [_event_view(row) for row in result.all()]
+
+
+def _standing_view(row: Any) -> StandingView:
+    return StandingView(
+        member_id=int(row[0]),
+        member_name=str(row[1]),
+        is_member_now=bool(row[2]),
+        weeks_owed=int(row[3]),
+        owed=int(row[4]),
+        credits=int(row[5]),
+        balance=int(row[6]),
+        weeks_overdue=int(row[7]),
+        oldest_unpaid_week=row[8],
+    )
+
+
+class SqlDuesRepository:
+    """The dues read: ``dues_overview`` as it stands (step 7.5 Q4=a)."""
+
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def list_dues(self) -> list[StandingView]:
+        # The view owns the order (weeks_overdue DESC, who_name; db/schema.sql:627-628).
+        result = await self._uow.execute(
+            """
+            SELECT who_id, who_name, is_member_now, weeks_owed, owed, credits,
+                   balance, weeks_overdue, oldest_unpaid_week
+            FROM dues_overview
+            """
+        )
+        return [_standing_view(row) for row in result.all()]

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from mesl_finance.auth.api.dependencies import current_actor
 from mesl_finance.envelopes.api.schemas import (
+    AllocationContextOut,
     CreateEnvelopeRequest,
     EnvelopeOut,
     EnvelopeSettingsRequest,
@@ -14,9 +15,11 @@ from mesl_finance.envelopes.application.create_envelope import (
     CreateEnvelopeCommand,
 )
 from mesl_finance.envelopes.application.deactivate_envelope import DeactivateEnvelope
+from mesl_finance.envelopes.application.get_allocation_context import GetAllocationContext
 from mesl_finance.envelopes.application.list_envelopes import ListEnvelopes
 from mesl_finance.envelopes.application.rename_envelope import RenameEnvelope
 from mesl_finance.envelopes.application.update_envelope_settings import UpdateEnvelopeSettings
+from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
 from mesl_finance.envelopes.domain.envelope import EnvelopeView
 
 router = APIRouter(tags=["envelopes"])
@@ -28,6 +31,10 @@ def get_create_envelope(request: Request) -> CreateEnvelope:
 
 def get_list_envelopes(request: Request) -> ListEnvelopes:
     return cast(ListEnvelopes, request.app.state.list_envelopes)
+
+
+def get_allocation_context(request: Request) -> GetAllocationContext:
+    return cast(GetAllocationContext, request.app.state.get_allocation_context)
 
 
 def get_rename_envelope(request: Request) -> RenameEnvelope:
@@ -50,6 +57,14 @@ def _out(view: EnvelopeView) -> EnvelopeOut:
         alloc_priority=view.alloc_priority,
         is_pool=view.is_pool,
         active=view.active,
+    )
+
+
+def _context_out(view: AllocationContextView) -> AllocationContextOut:
+    return AllocationContextOut(
+        pool_balance=view.pool_balance,
+        member_credit_held=view.member_credit_held,
+        pool_after_member_credit=view.pool_after_member_credit,
     )
 
 
@@ -107,3 +122,12 @@ async def post_deactivate(
 ) -> EnvelopeOut:
     view = await deactivate_envelope(envelope_id, actor=user)
     return _out(_found(view, envelope_id))
+
+
+@router.get("/allocation-context")
+async def get_allocation_context_view(
+    user: Annotated[str, Depends(current_actor)],
+    get_context: Annotated[GetAllocationContext, Depends(get_allocation_context)],
+) -> AllocationContextOut:
+    view = await get_context(actor=user)
+    return _context_out(view)

@@ -1,5 +1,6 @@
 from typing import Any
 
+from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
 from mesl_finance.envelopes.domain.envelope import Envelope, EnvelopeView
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
@@ -81,3 +82,24 @@ class SqlEnvelopeRepository:
         )
         row = result.first()
         return None if row is None else _view(row)
+
+
+class SqlAllocationContextRepository:
+    """The allocation header read: the ``allocation_context`` view (step 7.5 Q5=a)."""
+
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def get_allocation_context(self) -> AllocationContextView:
+        result = await self._uow.execute(
+            """
+            SELECT pool_balance, member_credit_held, pool_after_member_credit
+            FROM allocation_context
+            """
+        )
+        row = result.mappings().one()
+        return AllocationContextView(
+            pool_balance=int(row["pool_balance"]),
+            member_credit_held=int(row["member_credit_held"]),
+            pool_after_member_credit=int(row["pool_after_member_credit"]),
+        )

@@ -38,3 +38,15 @@ class SetShutdownRequest(BaseModel):
 
 class ShutdownResult(BaseModel):
     weeks: int
+
+
+class StandingOut(BaseModel):
+    member_id: int
+    member_name: str
+    is_member_now: bool
+    weeks_owed: int
+    owed: int
+    credits: int
+    balance: int
+    weeks_overdue: int
+    oldest_unpaid_week: date | None

@@ -19,12 +19,14 @@ from mesl_finance.cost_centers.infrastructure.unit_of_work import SqlCostCenterU
 from mesl_finance.envelopes.api.router import router as envelopes_router
 from mesl_finance.envelopes.application.create_envelope import CreateEnvelope
 from mesl_finance.envelopes.application.deactivate_envelope import DeactivateEnvelope
+from mesl_finance.envelopes.application.get_allocation_context import GetAllocationContext
 from mesl_finance.envelopes.application.list_envelopes import ListEnvelopes
 from mesl_finance.envelopes.application.rename_envelope import RenameEnvelope
 from mesl_finance.envelopes.application.update_envelope_settings import UpdateEnvelopeSettings
 from mesl_finance.envelopes.infrastructure.unit_of_work import SqlEnvelopeUnitOfWork
 from mesl_finance.fees.api.router import router as fees_router
 from mesl_finance.fees.application.create_fee_rate import CreateFeeRate
+from mesl_finance.fees.application.list_dues import ListDues
 from mesl_finance.fees.application.list_fee_rates import ListFeeRates
 from mesl_finance.fees.application.list_shutdown_events import ListShutdownEvents
 from mesl_finance.fees.application.set_shutdown import SetShutdown
@@ -91,6 +93,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.rename_envelope = RenameEnvelope(envelope_unit_of_work)
     app.state.update_envelope_settings = UpdateEnvelopeSettings(envelope_unit_of_work)
     app.state.deactivate_envelope = DeactivateEnvelope(envelope_unit_of_work)
+    app.state.get_allocation_context = GetAllocationContext(envelope_unit_of_work)
 
     def cost_center_unit_of_work(actor: str) -> SqlCostCenterUnitOfWork:
         return SqlCostCenterUnitOfWork(engine, actor)
@@ -117,6 +120,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.state.create_fee_rate = CreateFeeRate(fee_unit_of_work)
     app.state.list_fee_rates = ListFeeRates(fee_unit_of_work)
+    app.state.list_dues = ListDues(fee_unit_of_work)
     app.state.set_shutdown = SetShutdown(fee_unit_of_work)
     app.state.list_shutdown_events = ListShutdownEvents(fee_unit_of_work)
 

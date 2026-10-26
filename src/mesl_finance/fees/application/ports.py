@@ -1,5 +1,6 @@
 from typing import Protocol
 
+from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRate, FeeRateView
 from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownRange
 from mesl_finance.shared.ports import UnitOfWork
@@ -28,3 +29,18 @@ class FeeUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def fees(self) -> FeeRepository: ...
+
+
+class DuesRepository(Protocol):
+    """What the dues read needs; the write slices keep their own port."""
+
+    async def list_dues(self) -> list[StandingView]:
+        """Every ``dues_overview`` row, in the view's order."""
+        ...
+
+
+class DuesUnitOfWork(UnitOfWork, Protocol):
+    """The dues read's transaction scope."""
+
+    @property
+    def dues(self) -> DuesRepository: ...
