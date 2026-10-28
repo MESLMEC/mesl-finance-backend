@@ -238,7 +238,14 @@ How the app needs are met with ZERO schema changes:
   `AssetEvent.create` (approved option a, D-131); the use case passes the command's fields
   through. `create_asset`'s `recorded_by` param is unused on purpose (assets has no such
   column; the approved port fake pins the signature). `docs/openapi.json` stays 9.5's.
-- [ ] **9.2** Fix an asset event (reversal and replacement, one transaction). needs: 9.1
+- [x] **9.2** Fix an asset event (reversal and replacement, one transaction). needs: 9.1
+  Notes: CODE-WITH-TESTS, 30 new cases (10 domain, 2 use-case, 17 API, 1 inventory),
+  operation inventory 39 -> 40 (D-133/D-134/D-135). `POST
+  /api/v1/assets/{asset_id}/events/{event_id}/fix` takes `{quantity, occurred_on, note}`;
+  the SECOND fix of the same event answers 409 `unique` on `reverses_id` - the original's
+  own column stays NULL, so `asset_event_guard`'s "cannot be reversed" cannot fire there
+  (D-128 (2)); the domain refuses only non-int/zero quantities, the sign is the CHECK's
+  (:677); `docs/openapi.json` stays 9.5's.
 - [ ] **9.3** Reads: asset state, who-has-what, admin replacement queue. needs: 9.1
 - [ ] **9.4** Activity numbers for the admin report (`asset_activity`, CSV-ready). needs: 9.1
 - [ ] **9.5** Refresh `docs/openapi.json`. needs: 9.4 [P-003]

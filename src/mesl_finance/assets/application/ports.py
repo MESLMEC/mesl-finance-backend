@@ -1,7 +1,8 @@
 from typing import Protocol
 
 from mesl_finance.assets.domain.asset import Asset, AssetView
-from mesl_finance.assets.domain.asset_event import AssetEvent
+from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
+from mesl_finance.assets.domain.asset_event_fix import AssetEventFix
 from mesl_finance.shared.ports import UnitOfWork
 
 
@@ -32,3 +33,19 @@ class AssetUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def assets(self) -> AssetRepository: ...
+
+
+class FixEventRepository(Protocol):
+    async def fix_event(
+        self, asset_id: int, event_id: int, fix: AssetEventFix, recorded_by: str
+    ) -> tuple[int, int, AssetEventView] | None:
+        """Write a mirroring reversal plus a replacement in the caller's
+        transaction; None when the asset or the event does not exist."""
+        ...
+
+
+class FixEventUnitOfWork(UnitOfWork, Protocol):
+    """The fix-an-event slice's transaction scope (the D-085 pattern)."""
+
+    @property
+    def fix_events(self) -> FixEventRepository: ...

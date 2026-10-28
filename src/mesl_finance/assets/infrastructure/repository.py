@@ -1,7 +1,8 @@
 from typing import Any
 
 from mesl_finance.assets.domain.asset import Asset, AssetView
-from mesl_finance.assets.domain.asset_event import AssetEvent
+from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
+from mesl_finance.assets.domain.asset_event_fix import AssetEventFix
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -105,3 +106,94 @@ class SqlAssetRepository:
             },
         )
         return int(result.scalar_one())
+
+
+class SqlFixEventRepository:
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def fix_event(
+        self, asset_id: int, event_id: int, fix: AssetEventFix, recorded_by: str
+    ) -> tuple[int, int, AssetEventView] | None:
+        """Fix the event: a mirroring reversal plus a replacement, ONE transaction.
+
+        The reversal mirrors the original exactly (`asset_event_guard`,
+        db/schema.sql:742-749) and carries the request's note; the
+        replacement re-writes the original's kind, member, source and note
+        with the corrected quantity and the request's date. Whether the
+        original's `ledger_transaction_id` is copied is unpinned (no rule
+        decides it; db/schema.sql:673 would allow it on any `acquired` row).
+        PostgreSQL owns the "only once" walls (`reverses_id`/`replaces_id`
+        UNIQUE, :670-671), the sign rule (:677) and the bucket floors
+        (`asset_bucket_check`, :754-775).
+        """
+        original = (
+            (
+                await self._uow.execute(
+                    """
+                    SELECT kind::text AS kind, quantity, member_id,
+                           source::text AS source, note
+                      FROM asset_events
+                     WHERE id = :event_id AND asset_id = :asset_id
+                    """,
+                    {"event_id": event_id, "asset_id": asset_id},
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if original is None:
+            return None
+        reversal = await self._uow.execute(
+            """
+            INSERT INTO asset_events
+                   (asset_id, kind, quantity, member_id, occurred_on, recorded_by,
+                    note, source, reverses_id)
+            VALUES (:asset_id, :kind, :reversal_quantity, :member_id, :occurred_on,
+                    :recorded_by, :note, :source, :event_id)
+            RETURNING id
+            """,
+            {
+                "asset_id": asset_id,
+                "kind": original["kind"],
+                "reversal_quantity": -int(original["quantity"]),
+                "member_id": original["member_id"],
+                "occurred_on": fix.occurred_on,
+                "recorded_by": recorded_by,
+                "note": fix.note,
+                "source": original["source"],
+                "event_id": event_id,
+            },
+        )
+        reversal_id = int(reversal.scalar_one())
+        replacement = await self._uow.execute(
+            """
+            INSERT INTO asset_events
+                   (asset_id, kind, quantity, member_id, occurred_on, recorded_by,
+                    note, source, replaces_id)
+            VALUES (:asset_id, :kind, :quantity, :member_id, :occurred_on,
+                    :recorded_by, :note, :source, :event_id)
+            RETURNING id
+            """,
+            {
+                "asset_id": asset_id,
+                "kind": original["kind"],
+                "quantity": fix.quantity,
+                "member_id": original["member_id"],
+                "occurred_on": fix.occurred_on,
+                "recorded_by": recorded_by,
+                "note": original["note"],
+                "source": original["source"],
+                "event_id": event_id,
+            },
+        )
+        replacement_id = int(replacement.scalar_one())
+        view = AssetEventView(
+            id=replacement_id,
+            asset_id=asset_id,
+            kind=str(original["kind"]),
+            quantity=fix.quantity,
+            occurred_on=fix.occurred_on,
+            note=str(original["note"]),
+        )
+        return replacement_id, reversal_id, view

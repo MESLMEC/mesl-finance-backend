@@ -8,9 +8,12 @@ from mesl_finance.assets.api.schemas import (
     AssetOut,
     CreateAssetRequest,
     EditAssetRequest,
+    FixEventOut,
+    FixEventRequest,
 )
 from mesl_finance.assets.application.create_asset import CreateAsset, CreateAssetCommand
 from mesl_finance.assets.application.edit_asset import EditAsset, EditAssetCommand
+from mesl_finance.assets.application.fix_event import FixAssetEvent, FixEventCommand
 from mesl_finance.assets.application.list_assets import ListAssets
 from mesl_finance.assets.application.record_event import RecordAssetEvent, RecordEventCommand
 from mesl_finance.assets.domain.asset import AssetView
@@ -34,6 +37,10 @@ def get_edit_asset(request: Request) -> EditAsset:
 
 def get_record_asset_event(request: Request) -> RecordAssetEvent:
     return cast(RecordAssetEvent, request.app.state.record_asset_event)
+
+
+def get_fix_asset_event(request: Request) -> FixAssetEvent:
+    return cast(FixAssetEvent, request.app.state.fix_asset_event)
 
 
 def _asset_out(view: AssetView) -> AssetOut:
@@ -140,3 +147,37 @@ async def post_event(
     if view is None:
         raise _unknown(asset_id)
     return _event_out(view)
+
+
+@router.post("/assets/{asset_id}/events/{event_id}/fix", status_code=201)
+async def post_fix_event(
+    asset_id: int,
+    event_id: int,
+    body: FixEventRequest,
+    user: Annotated[str, Depends(current_actor)],
+    fix_asset_event: Annotated[FixAssetEvent, Depends(get_fix_asset_event)],
+) -> FixEventOut:
+    command = FixEventCommand(
+        asset_id=asset_id,
+        event_id=event_id,
+        quantity=body.quantity,
+        occurred_on=body.occurred_on,
+        note=body.note,
+    )
+    answer = await fix_asset_event(command, actor=user)
+    if answer is None:
+        # The URL identifies the resource: the detail names both ids, so an
+        # unknown asset and an unknown event are told apart by the caller.
+        raise HTTPException(
+            status_code=404, detail=f"event {event_id} does not exist under asset {asset_id}"
+        )
+    view, reversal_id = answer
+    return FixEventOut(
+        id=view.id,
+        asset_id=view.asset_id,
+        kind=view.kind,
+        quantity=view.quantity,
+        occurred_on=view.occurred_on,
+        note=view.note,
+        reversal_id=reversal_id,
+    )

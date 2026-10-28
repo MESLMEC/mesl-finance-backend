@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from mesl_finance.assets.api.router import router as assets_router
 from mesl_finance.assets.application.create_asset import CreateAsset
 from mesl_finance.assets.application.edit_asset import EditAsset
+from mesl_finance.assets.application.fix_event import FixAssetEvent
 from mesl_finance.assets.application.list_assets import ListAssets
 from mesl_finance.assets.application.record_event import RecordAssetEvent
 from mesl_finance.assets.infrastructure.unit_of_work import SqlAssetUnitOfWork
@@ -147,6 +148,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.list_assets = ListAssets(asset_unit_of_work)
     app.state.edit_asset = EditAsset(asset_unit_of_work)
     app.state.record_asset_event = RecordAssetEvent(asset_unit_of_work)
+    app.state.fix_asset_event = FixAssetEvent(asset_unit_of_work)
 
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)

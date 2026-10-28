@@ -54,3 +54,21 @@ class AssetEventRequest(BaseModel):
     source: AcquireSource | None = None
     ledger_transaction_id: int | None = None
     note: str = ""
+
+
+class FixEventRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    quantity: int = Field(strict=True)
+    occurred_on: date
+    note: str = ""
+
+
+class FixEventOut(BaseModel):
+    id: int
+    asset_id: int
+    kind: str
+    quantity: int
+    occurred_on: date
+    note: str
+    reversal_id: int
