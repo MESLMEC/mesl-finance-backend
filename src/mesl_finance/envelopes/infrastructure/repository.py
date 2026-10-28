@@ -2,11 +2,13 @@ import json
 from typing import Any
 
 from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
+from mesl_finance.envelopes.domain.allocation_decision import AllocationDecision
 from mesl_finance.envelopes.domain.allocation_suggestion import (
     AllocationSuggestionQuery,
     AllocationSuggestionView,
 )
 from mesl_finance.envelopes.domain.envelope import Envelope, EnvelopeView
+from mesl_finance.shared.errors import NoOpenTenure
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -148,3 +150,45 @@ def _suggestion(row: Any) -> AllocationSuggestionView:
         phase=str(row["phase"]),
         suggested=int(row["suggested"]),
     )
+
+
+class SqlConfirmAllocationRepository:
+    """The allocation confirmation: ``allocate()`` (step 8.2 Q1=a).
+
+    The function writes the ``transfer`` header (``tag='allocation'``), the lines
+    and the ``allocation_sessions`` row itself, so the adapter only passes the four
+    bound parameters and reads the pool balance back.
+    """
+
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def open_tenure_id(self) -> int:
+        row = (await self._uow.execute("SELECT id FROM tenures WHERE closed_on IS NULL")).first()
+        if row is None:
+            raise NoOpenTenure("there is no open tenure; the owner must create one first")
+        return int(row[0])
+
+    async def confirm(self, decision: AllocationDecision, recorded_by: str) -> tuple[int, int]:
+        result = await self._uow.execute(
+            """
+            SELECT allocate(
+                CAST(:recorded_by AS text), CAST(:occurred_on AS date),
+                CAST(:note AS text), CAST(:amounts AS jsonb)
+            )
+            """,
+            {
+                "recorded_by": recorded_by,
+                "occurred_on": decision.occurred_on,
+                "note": decision.note,
+                "amounts": json.dumps(decision.amounts),
+            },
+        )
+        entry_id = int(result.scalar_one())
+        balance = await self._uow.execute(
+            """
+            SELECT balance FROM envelope_balances
+             WHERE id = (SELECT id FROM envelopes WHERE is_pool)
+            """
+        )
+        return entry_id, int(balance.scalar_one())

@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -61,3 +62,21 @@ class AllocationSuggestionOut(BaseModel):
     gap: int | None
     phase: str
     suggested: int
+
+
+class ConfirmAllocationRequest(BaseModel):
+    """The confirmed split: whole taka per envelope id, plus the transfer's labels."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    occurred_on: date
+    note: str
+    amounts: dict[str, Annotated[int, Field(strict=True)]] = Field(
+        description='{"<envelope_id>": whole BDT}, every entry positive'
+    )
+
+
+class AllocationConfirmedOut(BaseModel):
+    id: int
+    kind: str
+    pool_balance: int

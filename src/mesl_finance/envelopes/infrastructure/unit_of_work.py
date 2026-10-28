@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from mesl_finance.envelopes.infrastructure.repository import (
     SqlAllocationContextRepository,
+    SqlConfirmAllocationRepository,
     SqlDraftAllocationRepository,
     SqlEnvelopeRepository,
 )
@@ -14,3 +15,4 @@ class SqlEnvelopeUnitOfWork(SqlUnitOfWork):
         self.envelopes = SqlEnvelopeRepository(self)
         self.allocation_context = SqlAllocationContextRepository(self)
         self.allocation_suggestion = SqlDraftAllocationRepository(self)
+        self.allocations = SqlConfirmAllocationRepository(self)

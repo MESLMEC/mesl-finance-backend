@@ -1,6 +1,7 @@
 from typing import Protocol
 
 from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
+from mesl_finance.envelopes.domain.allocation_decision import AllocationDecision
 from mesl_finance.envelopes.domain.allocation_suggestion import (
     AllocationSuggestionQuery,
     AllocationSuggestionView,
@@ -68,3 +69,22 @@ class DraftAllocationUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def allocation_suggestion(self) -> DraftAllocationRepository: ...
+
+
+class ConfirmAllocationRepository(Protocol):
+    """What the allocation confirmation needs; the read slices keep their own port."""
+
+    async def open_tenure_id(self) -> int:
+        """The open tenure's id, or ``NoOpenTenure``."""
+        ...
+
+    async def confirm(self, decision: AllocationDecision, recorded_by: str) -> tuple[int, int]:
+        """Run ``allocate()``; returns the new entry id and the pool balance after it."""
+        ...
+
+
+class ConfirmAllocationUnitOfWork(UnitOfWork, Protocol):
+    """The allocation confirmation's transaction scope."""
+
+    @property
+    def allocations(self) -> ConfirmAllocationRepository: ...

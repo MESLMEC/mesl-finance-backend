@@ -208,7 +208,12 @@ How the app needs are met with ZERO schema changes:
   explicit NULL `shares` reaches the function's reuse-the-last-session branch, so a reuse
   test must confirm the cap fills too, else the gaps eat the remainder first (D-119).
   `docs/openapi.json` stays 8.4's.
-- [ ] **8.2** Confirm allocation (`allocate`, one transaction). needs: 8.1, 6.2
+- [x] **8.2** Confirm allocation (`allocate`, one transaction). needs: 8.1, 6.2
+  Notes: CODE-WITH-TESTS, 32 cases (9 unit, 22 API, 1 inventory), operation inventory
+  32 -> 33 (D-120/D-121). `POST /api/v1/allocations` takes `{occurred_on, note, amounts}`
+  and returns `201 {id, kind, pool_balance}`; the app is thin (strict whole numbers only),
+  so zero/negative/non-digit/blank-note/over-allocation/unknown-or-inactive-envelope all
+  answer 409 from `allocate`'s own messages. `docs/openapi.json` stays 8.4's.
 - [ ] **8.3** Event leftover (`cost_center_summary`) and sweep to the pool (`sweep_leftover`). needs: 5.2, 6.2, 8.0
 - [ ] **8.4** Refresh `docs/openapi.json`. needs: 8.3 [P-003]
 

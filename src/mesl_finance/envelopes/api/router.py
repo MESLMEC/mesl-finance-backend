@@ -4,13 +4,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from mesl_finance.auth.api.dependencies import current_actor
 from mesl_finance.envelopes.api.schemas import (
+    AllocationConfirmedOut,
     AllocationContextOut,
     AllocationSuggestionOut,
     AllocationSuggestionRequest,
+    ConfirmAllocationRequest,
     CreateEnvelopeRequest,
     EnvelopeOut,
     EnvelopeSettingsRequest,
     RenameEnvelopeRequest,
+)
+from mesl_finance.envelopes.application.confirm_allocation import (
+    ConfirmAllocation,
+    ConfirmAllocationCommand,
 )
 from mesl_finance.envelopes.application.create_envelope import (
     CreateEnvelope,
@@ -46,6 +52,10 @@ def get_allocation_context(request: Request) -> GetAllocationContext:
 
 def get_draft_allocation(request: Request) -> DraftAllocation:
     return cast(DraftAllocation, request.app.state.draft_allocation)
+
+
+def get_confirm_allocation(request: Request) -> ConfirmAllocation:
+    return cast(ConfirmAllocation, request.app.state.confirm_allocation)
 
 
 def get_rename_envelope(request: Request) -> RenameEnvelope:
@@ -166,3 +176,14 @@ async def post_allocation_suggestion(
     query = AllocationSuggestionQuery(amount=body.amount, shares=body.shares)
     views = await draft_allocation(query, actor=user)
     return [_suggestion_out(view) for view in views]
+
+
+@router.post("/allocations", status_code=201)
+async def post_allocation(
+    body: ConfirmAllocationRequest,
+    user: Annotated[str, Depends(current_actor)],
+    confirm_allocation: Annotated[ConfirmAllocation, Depends(get_confirm_allocation)],
+) -> AllocationConfirmedOut:
+    command = ConfirmAllocationCommand(**body.model_dump())
+    entry_id, pool_balance = await confirm_allocation(command, actor=user)
+    return AllocationConfirmedOut(id=entry_id, kind="transfer", pool_balance=pool_balance)
