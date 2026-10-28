@@ -6,6 +6,12 @@ from datetime import timedelta
 
 from fastapi import FastAPI
 
+from mesl_finance.assets.api.router import router as assets_router
+from mesl_finance.assets.application.create_asset import CreateAsset
+from mesl_finance.assets.application.edit_asset import EditAsset
+from mesl_finance.assets.application.list_assets import ListAssets
+from mesl_finance.assets.application.record_event import RecordAssetEvent
+from mesl_finance.assets.infrastructure.unit_of_work import SqlAssetUnitOfWork
 from mesl_finance.auth.api.router import router as auth_router
 from mesl_finance.auth.application.login import Login
 from mesl_finance.auth.infrastructure.credentials import Argon2CredentialChecker
@@ -134,8 +140,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.set_shutdown = SetShutdown(fee_unit_of_work)
     app.state.list_shutdown_events = ListShutdownEvents(fee_unit_of_work)
 
+    def asset_unit_of_work(actor: str) -> SqlAssetUnitOfWork:
+        return SqlAssetUnitOfWork(engine, actor)
+
+    app.state.create_asset = CreateAsset(asset_unit_of_work)
+    app.state.list_assets = ListAssets(asset_unit_of_work)
+    app.state.edit_asset = EditAsset(asset_unit_of_work)
+    app.state.record_asset_event = RecordAssetEvent(asset_unit_of_work)
+
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
+    app.include_router(assets_router, prefix=API_PREFIX)
     app.include_router(ledger_router, prefix=API_PREFIX)
     app.include_router(envelopes_router, prefix=API_PREFIX)
     app.include_router(cost_centers_router, prefix=API_PREFIX)

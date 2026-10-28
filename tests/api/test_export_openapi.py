@@ -57,6 +57,7 @@ OPENAPI_VERSION = "3.1.0"
 # The operations of the features built so far, in sorted order. Extend it with each API step.
 EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("GET", "/api/v1/allocation-context"),
+    ("GET", "/api/v1/assets"),
     ("GET", "/api/v1/cost-centers"),
     ("GET", "/api/v1/cost-centers/{cost_center_id}/summary"),
     ("GET", "/api/v1/dues"),
@@ -69,6 +70,9 @@ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("GET", "/api/v1/shutdown-weeks"),
     ("POST", "/api/v1/allocation-suggestion"),
     ("POST", "/api/v1/allocations"),
+    ("POST", "/api/v1/assets"),
+    ("POST", "/api/v1/assets/{asset_id}/edit"),
+    ("POST", "/api/v1/assets/{asset_id}/events"),
     ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/cost-centers"),
     ("POST", "/api/v1/cost-centers/{cost_center_id}/rename"),

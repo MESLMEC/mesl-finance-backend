@@ -232,7 +232,12 @@ How the app needs are met with ZERO schema changes:
   Notes: TEST-ONLY, 35 cases in `tests/db/test_assets.py` (line-by-line coverage table in
   its docstring); the 16 rejected statements split 13x P0001 / 3x 23514 / 2x 42501 and
   line 85's asset rename is ALLOWED - the facts for 9.1+ are D-128.
-- [ ] **9.1** Asset records and events: acquired, lent, returned, damaged, lost, repaired, scrapped, exchanged, correction. needs: 7.1, 9.0
+- [x] **9.1** Asset records and events: acquired, lent, returned, damaged, lost, repaired, scrapped, exchanged, correction. needs: 7.1, 9.0
+  Notes: CODE-WITH-TESTS, 55 test functions / 97 cases (21 unit, 34 API), operation inventory
+  35 -> 39 (D-129/D-130/D-131). The event kind shapes are validated by the ROUTER through
+  `AssetEvent.create` (approved option a, D-131); the use case passes the command's fields
+  through. `create_asset`'s `recorded_by` param is unused on purpose (assets has no such
+  column; the approved port fake pins the signature). `docs/openapi.json` stays 9.5's.
 - [ ] **9.2** Fix an asset event (reversal and replacement, one transaction). needs: 9.1
 - [ ] **9.3** Reads: asset state, who-has-what, admin replacement queue. needs: 9.1
 - [ ] **9.4** Activity numbers for the admin report (`asset_activity`, CSV-ready). needs: 9.1

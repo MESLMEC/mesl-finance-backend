@@ -1,0 +1,2292 @@
+
+awful.spawn.with_shell(
+                "autorandr --change && notify-send 'Display Layout Change Requested'")
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# On branch main
+# Your branch is up to date with 'origin/main'.
+#
+# Changes to be committed:
+#	modified:   DECISIONS.md
+#	modified:   ROADMAP.md
+#	new file:   src/mesl_finance/assets/__init__.py
+#	new file:   src/mesl_finance/assets/api/__init__.py
+#	new file:   src/mesl_finance/assets/api/router.py
+#	new file:   src/mesl_finance/assets/api/schemas.py
+#	new file:   src/mesl_finance/assets/application/__init__.py
+#	new file:   src/mesl_finance/assets/application/create_asset.py
+#	new file:   src/mesl_finance/assets/application/edit_asset.py
+#	new file:   src/mesl_finance/assets/application/list_assets.py
+#	new file:   src/mesl_finance/assets/application/ports.py
+#	new file:   src/mesl_finance/assets/application/record_event.py
+#	new file:   src/mesl_finance/assets/domain/__init__.py
+#	new file:   src/mesl_finance/assets/domain/asset.py
+#	new file:   src/mesl_finance/assets/domain/asset_event.py
+#	new file:   src/mesl_finance/assets/infrastructure/__init__.py
+#	new file:   src/mesl_finance/assets/infrastructure/repository.py
+#	new file:   src/mesl_finance/assets/infrastructure/unit_of_work.py
+#	modified:   src/mesl_finance/main.py
+#	modified:   tests/api/test_export_openapi.py
+#	new file:   tests/assets/__init__.py
+#	new file:   tests/assets/api/__init__.py
+#	new file:   tests/assets/api/test_asset_events_api.py
+#	new file:   tests/assets/api/test_assets_api.py
+#	new file:   tests/assets/unit/__init__.py
+#	new file:   tests/assets/unit/test_asset_domain.py
+#	new file:   tests/assets/unit/test_asset_event_domain.py
+#	new file:   tests/assets/unit/test_asset_use_cases.py
+#
+# ------------------------ >8 ------------------------
+# Do not modify or remove the line above.
+# Everything below it will be ignored.
+diff --git a/DECISIONS.md b/DECISIONS.md
+index 4cadbe5..1f293b9 100644
+--- a/DECISIONS.md
++++ b/DECISIONS.md
+@@ -845,3 +845,26 @@ Gates this session (final run): `uv run pytest` 704 passed; `uv run ruff check .
+ passed!"; `uv run ruff format --check .` "236 files already formatted"; `uv run pyright` "0 errors,
+ 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL was closed by this batch and
+ the ROADMAP tick.
++
++## Added 2026-10-28 (forty-sixth batch, step 9.1 close). Earlier rows above are unchanged.
++
++### Confirmed by the user
++
++| ID | Date | Decision | Evidence (the user's words) | Relates to |
++|---|---|---|---|---|
++| D-129 | 2026-10-28 | Step 9.1 shape: every question took the brief's labelled suggestion (the D-062/D-064/D-066/D-070/D-076/D-079/D-082/D-086/D-088/D-090/D-093/D-096/D-101/D-104/D-106/D-109/D-111/D-117/D-120/D-122 pattern): (Q1=a) asset records (create + edit incl. name/tag/note/mode/ownership) and all nine event kinds; (Q2=a) `GET /api/v1/assets` raw rows, id order, no counts; (Q3=a) ONE event route `POST /api/v1/assets/{asset_id}/events` with `kind` in the body; (Q4=a) a strict positive whole `quantity` for every kind except `correction` (may be negative or positive); (Q5=a) the kind shapes (source only on `acquired`, member only on `lent`/`returned`/`damaged`/`lost`, required note on the five kinds) are refused by the APP as 422 `validation_failed`; (Q6=a) an unknown asset in the URL is 404 `not_found` naming the id; (Q7=a) unknown member/ledger transaction in the body answer 422 `unknown_reference` through the foreign keys; (Q8=a) 201 `{"id","asset_id","kind","quantity","occurred_on","note"}`, no counts; (Q9=a) `ledger_transaction_id` is an optional body field; (Q10=a) one session. | "The user approved the step brief for: all suggestions, go (if empty, the step briefed earlier in this session)." | ROADMAP 9.1, D-128 |
++| D-130 | 2026-10-28 | The step 9.1 tests are approved as written (55 functions / 98 cases before the fixes below). | "The user reviewed and approved the tests for:  (if empty, the step in this session)." | D-129 |
++| D-131 | 2026-10-28 | The user authorised the coder to fix THREE defective approved tests and chose option (a) for the validation placement: (1)+(2) the lend and damaged-by-member lifecycle tests expected stock 4 after acquire-4 + lend-2, but `asset_event_effects` gives `lent` stock_d = -quantity (db/schema.sql:700; example 05's own "EXPECT ESP32 stock 7") - the expectations became stock 2; (3) the `("damaged", {"note": "burnt"})` row of `test_the_source_pairs_only_with_acquired` was impossible (a damaged event without a source is legal: example 05 lines 33/35, and the approved 201 lifecycle test posts one) and was removed, the rule staying pinned by the other two rows; (4) option (a) - the kind shapes are validated by the ROUTER through `AssetEvent.create` before any transaction opens, and the use case passes the command's fields through unchanged (D-090's pattern: the kind-dependent rules are not the use case's business). No assertion was weakened beyond replacing wrong expectations and removing the impossible row. | "fix 1-3, and for 4 choose a." | D-129, D-107/D-118 precedent, AGENTS.md section 2 |
++
++### Discovered facts (proposed; verified from tool output this session)
++
++| ID | Date | Fact | Evidence |
++|---|---|---|---|
++| D-132 (proposed) | 2026-10-28 | Facts for the asset sessions (9.2 onward). (1) NO translator rule was needed: `asset_event_guard`/`asset_bucket_check` P0001 -> `rule_violation` with their own messages ("not enough in stock", "fewer units", "only exist once", "one unit at a time"), the FKs 23503 -> `unknown_reference`, the tag index 23505 -> `unique` naming `assets_tag_unique`, `asset_guard`'s mode/ownership P0001 -> `rule_violation` ("cannot change"). (2) An event dated before the tenure raises `asset_event_guard`'s "events cannot be dated inside a closed tenure (before %)" - the message does NOT contain "before this tenure opened", so it is `rule_violation`, NOT `DateBeforeTenure` (error_mapping.py:23 pins the other wording). (3) `AssetEvent.create` enforces ONLY the app pre-refusals (Q4=a/Q5=a); the bucket arithmetic (`asset_event_effects`, db/schema.sql:696-714), the current-member lend check (:737-741), individual-once and one-unit-at-a-time stay PostgreSQL's, pinned end to end by API tests. (4) The four asset enums are plain `Enum`s and their `.value` strings are bound as parameters - enum columns accept str values, the member-adjustment precedent. (5) `SqlAssetRepository.create_asset`'s `recorded_by` parameter is unused on purpose (`assets` has no recorded_by column; the approved port fake pins the signature) - do not silently change it. (6) `Asset.edit` semantics: only supplied fields change, an explicit null clears `tag` only, an empty body is 422 `validation_failed`; mode/ownership edits reach `asset_guard` (409 once events exist). (7) `reverses_id`/`replaces_id` are untouched - 9.2's reversal/replacement slice, with D-128 (2)'s mirror rules. (8) The event response carries no counts (Q8=a); `asset_state`/`who_has_what`/`admin_replacement_queue` are 9.3's, `asset_activity` 9.4's. (9) Operation inventory 35 -> 39 in `tests/api/test_export_openapi.py`; `docs/openapi.json` deliberately NOT regenerated (9.5's, D-125/D-114 pattern). (10) Gate evidence: `uv run pytest` 801 passed (704 pre-existing + 97 new), `uv run ruff check .` "All checks passed!", `uv run ruff format --check .` "260 files already formatted", `uv run pyright` "0 errors, 0 warnings, 0 informations". | gate runs, red/green runs and file reads this session; `db/schema.sql:639-681,696-714,716-775,1194,1199`; `db/examples/05_assets.sql` |
++
++### Evidence for the step close
++
++Gates this session (final run): `uv run pytest` 801 passed; `uv run ruff check .` "All checks
++passed!"; `uv run ruff format --check .` "260 files already formatted"; `uv run pyright`
++"0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL was closed by
++this batch and the ROADMAP tick.
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 1a97268..9998b19 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -232,7 +232,12 @@ How the app needs are met with ZERO schema changes:
+   Notes: TEST-ONLY, 35 cases in `tests/db/test_assets.py` (line-by-line coverage table in
+   its docstring); the 16 rejected statements split 13x P0001 / 3x 23514 / 2x 42501 and
+   line 85's asset rename is ALLOWED - the facts for 9.1+ are D-128.
+-- [ ] **9.1** Asset records and events: acquired, lent, returned, damaged, lost, repaired, scrapped, exchanged, correction. needs: 7.1, 9.0
++- [x] **9.1** Asset records and events: acquired, lent, returned, damaged, lost, repaired, scrapped, exchanged, correction. needs: 7.1, 9.0
++  Notes: CODE-WITH-TESTS, 55 test functions / 97 cases (21 unit, 34 API), operation inventory
++  35 -> 39 (D-129/D-130/D-131). The event kind shapes are validated by the ROUTER through
++  `AssetEvent.create` (approved option a, D-131); the use case passes the command's fields
++  through. `create_asset`'s `recorded_by` param is unused on purpose (assets has no such
++  column; the approved port fake pins the signature). `docs/openapi.json` stays 9.5's.
+ - [ ] **9.2** Fix an asset event (reversal and replacement, one transaction). needs: 9.1
+ - [ ] **9.3** Reads: asset state, who-has-what, admin replacement queue. needs: 9.1
+ - [ ] **9.4** Activity numbers for the admin report (`asset_activity`, CSV-ready). needs: 9.1
+diff --git a/src/mesl_finance/assets/__init__.py b/src/mesl_finance/assets/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/src/mesl_finance/assets/api/__init__.py b/src/mesl_finance/assets/api/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/src/mesl_finance/assets/api/router.py b/src/mesl_finance/assets/api/router.py
+new file mode 100644
+index 0000000..32b5a9c
+--- /dev/null
++++ b/src/mesl_finance/assets/api/router.py
+@@ -0,0 +1,142 @@
++from typing import Annotated, cast
++
++from fastapi import APIRouter, Depends, HTTPException, Request
++
++from mesl_finance.assets.api.schemas import (
++    AssetEventOut,
++    AssetEventRequest,
++    AssetOut,
++    CreateAssetRequest,
++    EditAssetRequest,
++)
++from mesl_finance.assets.application.create_asset import CreateAsset, CreateAssetCommand
++from mesl_finance.assets.application.edit_asset import EditAsset, EditAssetCommand
++from mesl_finance.assets.application.list_assets import ListAssets
++from mesl_finance.assets.application.record_event import RecordAssetEvent, RecordEventCommand
++from mesl_finance.assets.domain.asset import AssetView
++from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
++from mesl_finance.auth.api.dependencies import current_actor
++
++router = APIRouter(tags=["assets"])
++
++
++def get_create_asset(request: Request) -> CreateAsset:
++    return cast(CreateAsset, request.app.state.create_asset)
++
++
++def get_list_assets(request: Request) -> ListAssets:
++    return cast(ListAssets, request.app.state.list_assets)
++
++
++def get_edit_asset(request: Request) -> EditAsset:
++    return cast(EditAsset, request.app.state.edit_asset)
++
++
++def get_record_asset_event(request: Request) -> RecordAssetEvent:
++    return cast(RecordAssetEvent, request.app.state.record_asset_event)
++
++
++def _asset_out(view: AssetView) -> AssetOut:
++    return AssetOut(
++        id=view.id,
++        name=view.name,
++        mode=view.mode,
++        ownership=view.ownership,
++        tag=view.tag,
++        note=view.note,
++    )
++
++
++def _event_out(view: AssetEventView) -> AssetEventOut:
++    return AssetEventOut(
++        id=view.id,
++        asset_id=view.asset_id,
++        kind=view.kind,
++        quantity=view.quantity,
++        occurred_on=view.occurred_on,
++        note=view.note,
++    )
++
++
++def _unknown(asset_id: int) -> HTTPException:
++    return HTTPException(status_code=404, detail=f"asset {asset_id} does not exist")
++
++
++@router.post("/assets", status_code=201)
++async def post_asset(
++    body: CreateAssetRequest,
++    user: Annotated[str, Depends(current_actor)],
++    create_asset: Annotated[CreateAsset, Depends(get_create_asset)],
++) -> AssetOut:
++    command = CreateAssetCommand(
++        name=body.name,
++        mode=body.mode.value,
++        ownership=body.ownership.value,
++        tag=body.tag,
++        note=body.note,
++    )
++    return _asset_out(await create_asset(command, actor=user))
++
++
++@router.get("/assets")
++async def get_assets(
++    user: Annotated[str, Depends(current_actor)],
++    list_assets: Annotated[ListAssets, Depends(get_list_assets)],
++) -> list[AssetOut]:
++    views = await list_assets(actor=user)
++    return [_asset_out(view) for view in views]
++
++
++@router.post("/assets/{asset_id}/edit")
++async def post_edit(
++    asset_id: int,
++    body: EditAssetRequest,
++    user: Annotated[str, Depends(current_actor)],
++    edit_asset: Annotated[EditAsset, Depends(get_edit_asset)],
++) -> AssetOut:
++    command = EditAssetCommand(
++        fields=frozenset(body.model_fields_set),
++        name=body.name,
++        tag=body.tag,
++        note=body.note,
++        mode=None if body.mode is None else body.mode.value,
++        ownership=None if body.ownership is None else body.ownership.value,
++    )
++    view = await edit_asset(asset_id, command, actor=user)
++    if view is None:
++        raise _unknown(asset_id)
++    return _asset_out(view)
++
++
++@router.post("/assets/{asset_id}/events", status_code=201)
++async def post_event(
++    asset_id: int,
++    body: AssetEventRequest,
++    user: Annotated[str, Depends(current_actor)],
++    record_asset_event: Annotated[RecordAssetEvent, Depends(get_record_asset_event)],
++) -> AssetEventOut:
++    # The kind shapes are the app's 422 `validation_failed` refusals (Q5=a):
++    # validated here, before any transaction opens.
++    AssetEvent.create(
++        kind=body.kind.value,
++        quantity=body.quantity,
++        occurred_on=body.occurred_on,
++        member_id=body.member_id,
++        source=None if body.source is None else body.source.value,
++        ledger_transaction_id=body.ledger_transaction_id,
++        note=body.note,
++    )
++    command = RecordEventCommand(
++        asset_id=asset_id,
++        kind=body.kind.value,
++        quantity=body.quantity,
++        occurred_on=body.occurred_on,
++        member_id=body.member_id,
++        source=None if body.source is None else body.source.value,
++        ledger_transaction_id=body.ledger_transaction_id,
++        note=body.note,
++    )
++    view = await record_asset_event(command, actor=user)
++    if view is None:
++        raise _unknown(asset_id)
++    return _event_out(view)
+diff --git a/src/mesl_finance/assets/api/schemas.py b/src/mesl_finance/assets/api/schemas.py
+new file mode 100644
+index 0000000..30da73a
+--- /dev/null
++++ b/src/mesl_finance/assets/api/schemas.py
+@@ -0,0 +1,56 @@
++from datetime import date
++
++from pydantic import BaseModel, ConfigDict, Field
++
++from mesl_finance.assets.domain.asset import AssetMode, AssetOwner
++from mesl_finance.assets.domain.asset_event import AcquireSource, AssetEventKind
++
++
++class AssetOut(BaseModel):
++    id: int
++    name: str
++    mode: str
++    ownership: str
++    tag: str | None
++    note: str
++
++
++class CreateAssetRequest(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    name: str
++    mode: AssetMode
++    ownership: AssetOwner
++    tag: str | None = None
++    note: str = ""
++
++
++class EditAssetRequest(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    name: str | None = None
++    tag: str | None = None
++    note: str | None = None
++    mode: AssetMode | None = None
++    ownership: AssetOwner | None = None
++
++
++class AssetEventOut(BaseModel):
++    id: int
++    asset_id: int
++    kind: str
++    quantity: int
++    occurred_on: date
++    note: str
++
++
++class AssetEventRequest(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    kind: AssetEventKind
++    quantity: int = Field(strict=True)
++    occurred_on: date
++    member_id: int | None = None
++    source: AcquireSource | None = None
++    ledger_transaction_id: int | None = None
++    note: str = ""
+diff --git a/src/mesl_finance/assets/application/__init__.py b/src/mesl_finance/assets/application/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/src/mesl_finance/assets/application/create_asset.py b/src/mesl_finance/assets/application/create_asset.py
+new file mode 100644
+index 0000000..a2a37e7
+--- /dev/null
++++ b/src/mesl_finance/assets/application/create_asset.py
+@@ -0,0 +1,41 @@
++from collections.abc import Callable
++from dataclasses import dataclass
++
++from mesl_finance.assets.application.ports import AssetUnitOfWork
++from mesl_finance.assets.domain.asset import Asset, AssetView
++
++
++@dataclass(frozen=True)
++class CreateAssetCommand:
++    name: str
++    mode: str
++    ownership: str
++    tag: str | None = None
++    note: str = ""
++
++
++class CreateAsset:
++    """Business action: add an asset record, in ONE transaction."""
++
++    def __init__(self, unit_of_work: Callable[[str], AssetUnitOfWork]) -> None:
++        self._unit_of_work = unit_of_work
++
++    async def __call__(self, command: CreateAssetCommand, actor: str) -> AssetView:
++        asset = Asset.create(
++            name=command.name,
++            mode=command.mode,
++            ownership=command.ownership,
++            tag=command.tag,
++            note=command.note,
++        )
++        async with self._unit_of_work(actor) as uow:
++            asset_id = await uow.assets.create_asset(asset, actor)
++            await uow.commit()
++        return AssetView(
++            id=asset_id,
++            name=asset.name,
++            mode=asset.mode,
++            ownership=asset.ownership,
++            tag=asset.tag,
++            note=asset.note,
++        )
+diff --git a/src/mesl_finance/assets/application/edit_asset.py b/src/mesl_finance/assets/application/edit_asset.py
+new file mode 100644
+index 0000000..b522598
+--- /dev/null
++++ b/src/mesl_finance/assets/application/edit_asset.py
+@@ -0,0 +1,47 @@
++from collections.abc import Callable
++from dataclasses import dataclass
++
++from mesl_finance.assets.application.ports import AssetUnitOfWork
++from mesl_finance.assets.domain.asset import Asset, AssetView
++
++
++@dataclass(frozen=True)
++class EditAssetCommand:
++    fields: frozenset[str]
++    name: str | None = None
++    tag: str | None = None
++    note: str | None = None
++    mode: str | None = None
++    ownership: str | None = None
++
++
++class EditAsset:
++    """Business action: change an asset's labels, in ONE transaction."""
++
++    def __init__(self, unit_of_work: Callable[[str], AssetUnitOfWork]) -> None:
++        self._unit_of_work = unit_of_work
++
++    async def __call__(
++        self, asset_id: int, command: EditAssetCommand, actor: str
++    ) -> AssetView | None:
++        async with self._unit_of_work(actor) as uow:
++            stored = await uow.assets.get(asset_id)
++            if stored is None:
++                return None
++            asset = Asset(
++                name=stored.name,
++                mode=stored.mode,
++                ownership=stored.ownership,
++                tag=stored.tag,
++                note=stored.note,
++            ).edit(
++                fields=command.fields,
++                name=command.name,
++                tag=command.tag,
++                note=command.note,
++                mode=command.mode,
++                ownership=command.ownership,
++            )
++            view = await uow.assets.save(asset_id, asset)
++            await uow.commit()
++        return view
+diff --git a/src/mesl_finance/assets/application/list_assets.py b/src/mesl_finance/assets/application/list_assets.py
+new file mode 100644
+index 0000000..028d527
+--- /dev/null
++++ b/src/mesl_finance/assets/application/list_assets.py
+@@ -0,0 +1,15 @@
++from collections.abc import Callable
++
++from mesl_finance.assets.application.ports import AssetUnitOfWork
++from mesl_finance.assets.domain.asset import AssetView
++
++
++class ListAssets:
++    """Business action: the treasurer's asset list (no counts; 9.3 owns reads)."""
++
++    def __init__(self, unit_of_work: Callable[[str], AssetUnitOfWork]) -> None:
++        self._unit_of_work = unit_of_work
++
++    async def __call__(self, actor: str) -> list[AssetView]:
++        async with self._unit_of_work(actor) as uow:
++            return await uow.assets.list_all()
+diff --git a/src/mesl_finance/assets/application/ports.py b/src/mesl_finance/assets/application/ports.py
+new file mode 100644
+index 0000000..a496a55
+--- /dev/null
++++ b/src/mesl_finance/assets/application/ports.py
+@@ -0,0 +1,34 @@
++from typing import Protocol
++
++from mesl_finance.assets.domain.asset import Asset, AssetView
++from mesl_finance.assets.domain.asset_event import AssetEvent
++from mesl_finance.shared.ports import UnitOfWork
++
++
++class AssetRepository(Protocol):
++    async def list_all(self) -> list[AssetView]:
++        """Every asset, in id order."""
++        ...
++
++    async def create_asset(self, asset: Asset, recorded_by: str) -> int:
++        """Write a new asset; returns its id."""
++        ...
++
++    async def get(self, asset_id: int) -> AssetView | None:
++        """One asset; None when the id does not exist."""
++        ...
++
++    async def save(self, asset_id: int, asset: Asset) -> AssetView | None:
++        """Write an asset's labels; None when the id does not exist."""
++        ...
++
++    async def add_event(self, asset_id: int, event: AssetEvent, recorded_by: str) -> int | None:
++        """Write one event; None when the asset does not exist."""
++        ...
++
++
++class AssetUnitOfWork(UnitOfWork, Protocol):
++    """The assets' transaction scope: the shared scope plus its repository."""
++
++    @property
++    def assets(self) -> AssetRepository: ...
+diff --git a/src/mesl_finance/assets/application/record_event.py b/src/mesl_finance/assets/application/record_event.py
+new file mode 100644
+index 0000000..a2d42d0
+--- /dev/null
++++ b/src/mesl_finance/assets/application/record_event.py
+@@ -0,0 +1,56 @@
++from collections.abc import Callable
++from dataclasses import dataclass
++from datetime import date
++
++from mesl_finance.assets.application.ports import AssetUnitOfWork
++from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
++
++
++@dataclass(frozen=True)
++class RecordEventCommand:
++    asset_id: int
++    kind: str
++    quantity: int
++    occurred_on: date
++    member_id: int | None = None
++    source: str | None = None
++    ledger_transaction_id: int | None = None
++    note: str = ""
++
++
++class RecordAssetEvent:
++    """Business action: record one asset event, in ONE transaction.
++
++    The kind shapes (quantity sign, `source`/`member_id` pairing, required
++    note) are validated by the ROUTER through `AssetEvent.create` before this
++    use case runs (approved option a, D-090's pattern: the kind-dependent
++    rules are not the use case's business). Here the command's fields are
++    passed through unchanged.
++    """
++
++    def __init__(self, unit_of_work: Callable[[str], AssetUnitOfWork]) -> None:
++        self._unit_of_work = unit_of_work
++
++    async def __call__(self, command: RecordEventCommand, actor: str) -> AssetEventView | None:
++        event = AssetEvent(
++            kind=command.kind,
++            quantity=command.quantity,
++            occurred_on=command.occurred_on,
++            member_id=command.member_id,
++            source=command.source,
++            ledger_transaction_id=command.ledger_transaction_id,
++            note=command.note,
++        )
++        async with self._unit_of_work(actor) as uow:
++            event_id = await uow.assets.add_event(command.asset_id, event, actor)
++            if event_id is None:
++                return None
++            await uow.commit()
++        return AssetEventView(
++            id=event_id,
++            asset_id=command.asset_id,
++            kind=event.kind,
++            quantity=event.quantity,
++            occurred_on=event.occurred_on,
++            note=event.note,
++        )
+diff --git a/src/mesl_finance/assets/domain/__init__.py b/src/mesl_finance/assets/domain/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/src/mesl_finance/assets/domain/asset.py b/src/mesl_finance/assets/domain/asset.py
+new file mode 100644
+index 0000000..67b2f95
+--- /dev/null
++++ b/src/mesl_finance/assets/domain/asset.py
+@@ -0,0 +1,92 @@
++"""An asset record and its API answer. Pure Python; PostgreSQL owns the rest."""
++
++from dataclasses import dataclass
++from enum import Enum
++
++from mesl_finance.shared.errors import ValidationFailed
++
++
++class AssetMode(Enum):
++    """The two tracking modes (db/schema.sql:639)."""
++
++    INDIVIDUAL = "individual"
++    COUNTED = "counted"
++
++
++class AssetOwner(Enum):
++    """Who the asset belongs to (db/schema.sql:640)."""
++
++    LAB = "lab"
++    ADMIN = "admin"
++
++
++@dataclass(frozen=True)
++class Asset:
++    """The treasurer-entered labels of an asset (db/schema.sql:642-650)."""
++
++    name: str
++    mode: str
++    ownership: str
++    tag: str | None = None
++    note: str = ""
++
++    @classmethod
++    def create(
++        cls, *, name: str, mode: str, ownership: str, tag: str | None = None, note: str = ""
++    ) -> "Asset":
++        require_name(name)
++        return cls(name, mode, ownership, tag, note)
++
++    def edit(
++        self,
++        *,
++        fields: frozenset[str],
++        name: str | None = None,
++        tag: str | None = None,
++        note: str | None = None,
++        mode: str | None = None,
++        ownership: str | None = None,
++    ) -> "Asset":
++        """Change only the fields named; an explicit None clears `tag` only."""
++        if not fields:
++            raise ValidationFailed("an asset edit must name at least one field")
++        new_name, new_tag, new_note = self.name, self.tag, self.note
++        new_mode, new_ownership = self.mode, self.ownership
++        if "name" in fields:
++            if name is None:
++                raise ValidationFailed("an asset needs a name")
++            require_name(name)
++            new_name = name
++        if "tag" in fields:
++            new_tag = tag
++        if "note" in fields:
++            if note is None:
++                raise ValidationFailed("an asset note must be text")
++            new_note = note
++        if "mode" in fields:
++            if mode is None:
++                raise ValidationFailed("an asset needs a mode")
++            new_mode = mode
++        if "ownership" in fields:
++            if ownership is None:
++                raise ValidationFailed("an asset needs an ownership")
++            new_ownership = ownership
++        return Asset(new_name, new_mode, new_ownership, new_tag, new_note)
++
++
++@dataclass(frozen=True)
++class AssetView:
++    """An asset as stored, for the API's answers."""
++
++    id: int
++    name: str
++    mode: str
++    ownership: str
++    tag: str | None
++    note: str
++
++
++def require_name(name: str) -> None:
++    """The app's own rule (D-070 Q4 pattern): an asset needs a non-blank name."""
++    if not name.strip():
++        raise ValidationFailed("an asset needs a name")
+diff --git a/src/mesl_finance/assets/domain/asset_event.py b/src/mesl_finance/assets/domain/asset_event.py
+new file mode 100644
+index 0000000..8595cd5
+--- /dev/null
++++ b/src/mesl_finance/assets/domain/asset_event.py
+@@ -0,0 +1,97 @@
++"""One asset event and its API answer. Pure Python; the stock rules are PostgreSQL's."""
++
++from dataclasses import dataclass
++from datetime import date
++from enum import Enum
++
++from mesl_finance.shared.errors import ValidationFailed
++
++
++class AssetEventKind(Enum):
++    """The nine event kinds (db/schema.sql:653-654)."""
++
++    ACQUIRED = "acquired"
++    LENT = "lent"
++    RETURNED = "returned"
++    DAMAGED = "damaged"
++    LOST = "lost"
++    REPAIRED = "repaired"
++    SCRAPPED = "scrapped"
++    EXCHANGED = "exchanged"
++    CORRECTION = "correction"
++
++
++class AcquireSource(Enum):
++    """Where an acquisition came from (db/schema.sql:655)."""
++
++    PURCHASE = "purchase"
++    ADMIN = "admin"
++    PROJECT_RETURN = "project_return"
++    DONATION = "donation"
++    REPLACEMENT = "replacement"
++    OTHER = "other"
++
++
++_MEMBER_KINDS = ("lent", "returned")
++_MEMBER_OPTIONAL_KINDS = ("damaged", "lost")
++_NOTE_REQUIRED_KINDS = ("damaged", "lost", "scrapped", "exchanged", "correction")
++
++
++@dataclass(frozen=True)
++class AssetEvent:
++    """The treasurer-entered fields of one event (db/schema.sql:657-681).
++
++    The quantity sign, the kind shapes and the bucket arithmetic stay
++    PostgreSQL's (asset_event_guard / asset_bucket_check); the app pre-refuses
++    only what the approved step chose to stop before SQL (422
++    `validation_failed`): a non-positive or non-`int` quantity, the kind
++    pairing of `source`, `member_id` and the required note.
++    """
++
++    kind: str
++    quantity: int
++    occurred_on: date
++    member_id: int | None = None
++    source: str | None = None
++    ledger_transaction_id: int | None = None
++    note: str = ""
++
++    @classmethod
++    def create(
++        cls,
++        *,
++        kind: str,
++        quantity: int,
++        occurred_on: date,
++        member_id: int | None = None,
++        source: str | None = None,
++        ledger_transaction_id: int | None = None,
++        note: str = "",
++    ) -> "AssetEvent":
++        if type(quantity) is not int:  # bool refused too (the D-047 strictness)
++            raise ValidationFailed("an event quantity must be a whole number")
++        if quantity == 0:
++            raise ValidationFailed("a quantity cannot be zero")
++        if quantity < 0 and kind != "correction":
++            raise ValidationFailed("only a correction may have a negative quantity")
++        if kind in _MEMBER_KINDS and member_id is None:
++            raise ValidationFailed("lending and returning need a member")
++        if kind not in (*_MEMBER_KINDS, *_MEMBER_OPTIONAL_KINDS) and member_id is not None:
++            raise ValidationFailed(f"a {kind} event cannot name a member")
++        if (kind == "acquired") != (source is not None):
++            raise ValidationFailed("a source is required on acquired and forbidden elsewhere")
++        if kind in _NOTE_REQUIRED_KINDS and not note.strip():
++            raise ValidationFailed(f"a {kind} event needs a note")
++        return cls(kind, quantity, occurred_on, member_id, source, ledger_transaction_id, note)
++
++
++@dataclass(frozen=True)
++class AssetEventView:
++    """An event as stored, for the API's answers (no counts; 9.3 owns reads)."""
++
++    id: int
++    asset_id: int
++    kind: str
++    quantity: int
++    occurred_on: date
++    note: str
+diff --git a/src/mesl_finance/assets/infrastructure/__init__.py b/src/mesl_finance/assets/infrastructure/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/src/mesl_finance/assets/infrastructure/repository.py b/src/mesl_finance/assets/infrastructure/repository.py
+new file mode 100644
+index 0000000..8bb1a97
+--- /dev/null
++++ b/src/mesl_finance/assets/infrastructure/repository.py
+@@ -0,0 +1,107 @@
++from typing import Any
++
++from mesl_finance.assets.domain.asset import Asset, AssetView
++from mesl_finance.assets.domain.asset_event import AssetEvent
++from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
++
++
++def _asset_view(row: Any) -> AssetView:
++    return AssetView(
++        id=int(row[0]),
++        name=str(row[1]),
++        mode=str(row[2]),
++        ownership=str(row[3]),
++        tag=row[4],
++        note=str(row[5]),
++    )
++
++
++class SqlAssetRepository:
++    def __init__(self, uow: SqlUnitOfWork) -> None:
++        self._uow = uow
++
++    async def list_all(self) -> list[AssetView]:
++        result = await self._uow.execute(
++            """
++            SELECT id, name, mode::text, ownership::text, tag, note
++            FROM assets
++            ORDER BY id
++            """
++        )
++        return [_asset_view(row) for row in result.all()]
++
++    async def create_asset(self, asset: Asset, recorded_by: str) -> int:
++        result = await self._uow.execute(
++            """
++            INSERT INTO assets (name, mode, ownership, tag, note)
++            VALUES (:name, :mode, :ownership, :tag, :note)
++            RETURNING id
++            """,
++            {
++                "name": asset.name,
++                "mode": asset.mode,
++                "ownership": asset.ownership,
++                "tag": asset.tag,
++                "note": asset.note,
++            },
++        )
++        return int(result.scalar_one())
++
++    async def get(self, asset_id: int) -> AssetView | None:
++        result = await self._uow.execute(
++            """
++            SELECT id, name, mode::text, ownership::text, tag, note
++            FROM assets
++            WHERE id = :id
++            """,
++            {"id": asset_id},
++        )
++        row = result.first()
++        return None if row is None else _asset_view(row)
++
++    async def save(self, asset_id: int, asset: Asset) -> AssetView | None:
++        result = await self._uow.execute(
++            """
++            UPDATE assets
++            SET name = :name, tag = :tag, note = :note, mode = :mode, ownership = :ownership
++            WHERE id = :id
++            RETURNING id, name, mode::text, ownership::text, tag, note
++            """,
++            {
++                "id": asset_id,
++                "name": asset.name,
++                "tag": asset.tag,
++                "note": asset.note,
++                "mode": asset.mode,
++                "ownership": asset.ownership,
++            },
++        )
++        row = result.first()
++        return None if row is None else _asset_view(row)
++
++    async def add_event(self, asset_id: int, event: AssetEvent, recorded_by: str) -> int | None:
++        exists = await self._uow.execute("SELECT 1 FROM assets WHERE id = :id", {"id": asset_id})
++        if exists.first() is None:
++            return None
++        result = await self._uow.execute(
++            """
++            INSERT INTO asset_events
++                (asset_id, kind, quantity, member_id, occurred_on, recorded_by, note,
++                 source, ledger_transaction_id)
++            VALUES (:asset_id, :kind, :quantity, :member_id, :occurred_on, :recorded_by,
++                    :note, :source, :ledger_transaction_id)
++            RETURNING id
++            """,
++            {
++                "asset_id": asset_id,
++                "kind": event.kind,
++                "quantity": event.quantity,
++                "member_id": event.member_id,
++                "occurred_on": event.occurred_on,
++                "recorded_by": recorded_by,
++                "note": event.note,
++                "source": event.source,
++                "ledger_transaction_id": event.ledger_transaction_id,
++            },
++        )
++        return int(result.scalar_one())
+diff --git a/src/mesl_finance/assets/infrastructure/unit_of_work.py b/src/mesl_finance/assets/infrastructure/unit_of_work.py
+new file mode 100644
+index 0000000..c63200e
+--- /dev/null
++++ b/src/mesl_finance/assets/infrastructure/unit_of_work.py
+@@ -0,0 +1,10 @@
++from sqlalchemy.ext.asyncio import AsyncEngine
++
++from mesl_finance.assets.infrastructure.repository import SqlAssetRepository
++from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
++
++
++class SqlAssetUnitOfWork(SqlUnitOfWork):
++    def __init__(self, engine: AsyncEngine, actor: str) -> None:
++        super().__init__(engine, actor)
++        self.assets = SqlAssetRepository(self)
+diff --git a/src/mesl_finance/main.py b/src/mesl_finance/main.py
+index 0f9e0d7..a8eeaf4 100644
+--- a/src/mesl_finance/main.py
++++ b/src/mesl_finance/main.py
+@@ -6,6 +6,12 @@ from datetime import timedelta
+ 
+ from fastapi import FastAPI
+ 
++from mesl_finance.assets.api.router import router as assets_router
++from mesl_finance.assets.application.create_asset import CreateAsset
++from mesl_finance.assets.application.edit_asset import EditAsset
++from mesl_finance.assets.application.list_assets import ListAssets
++from mesl_finance.assets.application.record_event import RecordAssetEvent
++from mesl_finance.assets.infrastructure.unit_of_work import SqlAssetUnitOfWork
+ from mesl_finance.auth.api.router import router as auth_router
+ from mesl_finance.auth.application.login import Login
+ from mesl_finance.auth.infrastructure.credentials import Argon2CredentialChecker
+@@ -134,8 +140,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
+     app.state.set_shutdown = SetShutdown(fee_unit_of_work)
+     app.state.list_shutdown_events = ListShutdownEvents(fee_unit_of_work)
+ 
++    def asset_unit_of_work(actor: str) -> SqlAssetUnitOfWork:
++        return SqlAssetUnitOfWork(engine, actor)
++
++    app.state.create_asset = CreateAsset(asset_unit_of_work)
++    app.state.list_assets = ListAssets(asset_unit_of_work)
++    app.state.edit_asset = EditAsset(asset_unit_of_work)
++    app.state.record_asset_event = RecordAssetEvent(asset_unit_of_work)
++
+     install_error_handlers(app)
+     app.include_router(auth_router, prefix=API_PREFIX)
++    app.include_router(assets_router, prefix=API_PREFIX)
+     app.include_router(ledger_router, prefix=API_PREFIX)
+     app.include_router(envelopes_router, prefix=API_PREFIX)
+     app.include_router(cost_centers_router, prefix=API_PREFIX)
+diff --git a/tests/api/test_export_openapi.py b/tests/api/test_export_openapi.py
+index 44eaf7b..11cf56a 100644
+--- a/tests/api/test_export_openapi.py
++++ b/tests/api/test_export_openapi.py
+@@ -57,6 +57,7 @@ OPENAPI_VERSION = "3.1.0"
+ # The operations of the features built so far, in sorted order. Extend it with each API step.
+ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
+     ("GET", "/api/v1/allocation-context"),
++    ("GET", "/api/v1/assets"),
+     ("GET", "/api/v1/cost-centers"),
+     ("GET", "/api/v1/cost-centers/{cost_center_id}/summary"),
+     ("GET", "/api/v1/dues"),
+@@ -69,6 +70,9 @@ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
+     ("GET", "/api/v1/shutdown-weeks"),
+     ("POST", "/api/v1/allocation-suggestion"),
+     ("POST", "/api/v1/allocations"),
++    ("POST", "/api/v1/assets"),
++    ("POST", "/api/v1/assets/{asset_id}/edit"),
++    ("POST", "/api/v1/assets/{asset_id}/events"),
+     ("POST", "/api/v1/auth/login"),
+     ("POST", "/api/v1/cost-centers"),
+     ("POST", "/api/v1/cost-centers/{cost_center_id}/rename"),
+diff --git a/tests/assets/__init__.py b/tests/assets/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tests/assets/api/__init__.py b/tests/assets/api/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tests/assets/api/test_asset_events_api.py b/tests/assets/api/test_asset_events_api.py
+new file mode 100644
+index 0000000..1114a60
+--- /dev/null
++++ b/tests/assets/api/test_asset_events_api.py
+@@ -0,0 +1,620 @@
++"""API tests for the nine asset event kinds (roadmap step 9.1).
++
++Approved brief answers this session: Q3=a ONE route
++`POST /api/v1/assets/{asset_id}/events` with `kind` in the body; Q4=a the app
++requires a strict positive whole `quantity` for every kind except
++`correction`, which may be negative or positive; Q5=a the kind-shape rules are
++refused by the APP as 422 `validation_failed` before SQL (a deviation from the
++brief's earlier item 30, which had predicted 409 for a correction with a
++member - Q5=a, approved after the test list, supersedes it); Q6=a an unknown
++asset in the URL is 404 `not_found` naming the id (D-108); Q7=a an unknown
++member or ledger transaction in the body answers 422 `unknown_reference`
++through the foreign key (D-110); Q8=a 201
++`{"id","asset_id","kind","quantity","occurred_on","note"}` - no counts, 9.3
++owns the reads; Q9=a `ledger_transaction_id` is an optional body field.
++
++Database rules these tests rely on (db/schema.sql, read this session):
++- `asset_event_guard` (:726-752): no event before the tenure opened ("events
++  cannot be dated inside a closed tenure", P0001 -> 409 `rule_violation`; the
++  message does NOT contain "before this tenure opened", so it is NOT the
++  DateBeforeTenure rule at error_mapping.py:23); an individual asset moves one
++  unit at a time; lending needs a member who currently holds a period;
++  reversal mirroring is 9.2's;
++- `asset_bucket_check` (:754-775): the stock/damaged/lost/scrapped/exchanged
++  and per-member held floors, and "an individually tracked asset can only
++  exist once" (all P0001 -> 409 `rule_violation`);
++- `asset_event_effects` (:696-714) is what the count assertions read:
++  acquired/returned/repaired/correction add to stock, lent/damaged-with-
++  member/lost-with-member move held, damaged/lost move stock (no member),
++  repaired moves damaged back, scrapped/exchanged never touch stock;
++- `labapp` may INSERT asset_events (:1194) and UPDATE only note,
++  cost_center_id, occurred_on (:1200).
++
++The tenure in the `lab` fixture opened on 2026-01-01, so every date below is
++on or after it; the borrower starts a period on 2026-01-01, which
++`asset_event_guard`'s current-member check requires for `lent`.
++
++Library APIs used, all verified in installed source this session:
++- `httpx.AsyncClient.get/post` (httpx 0.28.1, _client.py:1751,1838);
++- `asyncpg.Connection.fetchrow/fetchval` (asyncpg-stubs 0.32.0,
++  connection.pyi:725,746);
++- `pytest.mark.parametrize` (pytest 9.1.1, _pytest/python.py:1231);
++- the real `client` / `lab` / `auth` / `db` fixtures from tests/conftest.py.
++"""
++
++from typing import Any
++
++import pytest
++from httpx import AsyncClient
++
++from tests.conftest import USERNAME, TestDb
++
++EVENT_FIELDS = {"id", "asset_id", "kind", "quantity", "occurred_on", "note"}
++BUCKET_KEYS = ("stock", "damaged", "lost", "scrapped", "exchanged", "held")
++
++
++def assert_problem(response: Any, status: int, code: str) -> None:
++    assert response.status_code == status
++    assert response.headers["content-type"].startswith("application/problem+json")
++    assert response.json()["code"] == code
++
++
++async def asset(client: AsyncClient, auth: dict[str, str], mode: str = "counted") -> dict[str, Any]:
++    response = await client.post(
++        "/api/v1/assets",
++        json={"name": "ESP32 DevKit", "mode": mode, "ownership": "lab"},
++        headers=auth,
++    )
++    assert response.status_code == 201
++    return response.json()
++
++
++async def borrower(
++    client: AsyncClient, auth: dict[str, str], name: str = "Ayesha"
++) -> dict[str, Any]:
++    member = await client.post("/api/v1/members", json={"name": name}, headers=auth)
++    assert member.status_code == 201
++    started = await client.post(
++        f"/api/v1/members/{member.json()['id']}/periods/start",
++        json={"start_date": "2026-01-01"},
++        headers=auth,
++    )
++    assert started.status_code == 201
++    return member.json()
++
++
++def event_body(kind: str, **overrides: Any) -> dict[str, Any]:
++    body: dict[str, Any] = {
++        "kind": kind,
++        "quantity": 10,
++        "occurred_on": "2026-02-01",
++    }
++    body.update(overrides)
++    return body
++
++
++async def event(
++    client: AsyncClient, auth: dict[str, str], asset_id: int, kind: str, **overrides: Any
++) -> Any:
++    return await client.post(
++        f"/api/v1/assets/{asset_id}/events", json=event_body(kind, **overrides), headers=auth
++    )
++
++
++async def buckets(db: TestDb, asset_id: int) -> dict[str, Any]:
++    row = await db.owner.fetchrow(
++        "SELECT coalesce(sum(stock_d), 0) AS stock, coalesce(sum(damaged_d), 0) AS damaged,"
++        " coalesce(sum(lost_d), 0) AS lost, coalesce(sum(scrapped_d), 0) AS scrapped,"
++        " coalesce(sum(exchanged_d), 0) AS exchanged, coalesce(sum(held_d), 0) AS held"
++        " FROM asset_event_effects WHERE asset_id = $1",
++        asset_id,
++    )
++    assert row is not None
++    return {key: row[key] for key in BUCKET_KEYS}
++
++
++async def held_by(db: TestDb, asset_id: int, member_id: int) -> Any:
++    return await db.owner.fetchval(
++        "SELECT coalesce(sum(held_d), 0) FROM asset_event_effects"
++        " WHERE asset_id = $1 AND member_id = $2",
++        asset_id,
++        member_id,
++    )
++
++
++async def stored_event(db: TestDb, event_id: int) -> dict[str, Any]:
++    row = await db.owner.fetchrow(
++        "SELECT id, asset_id, kind::text AS kind, quantity, occurred_on, note,"
++        " source::text AS source, member_id, ledger_transaction_id, recorded_by"
++        " FROM asset_events WHERE id = $1",
++        event_id,
++    )
++    assert row is not None
++    answer = dict(row)
++    answer["occurred_on"] = answer["occurred_on"].isoformat()
++    return answer
++
++
++async def event_count(db: TestDb) -> Any:
++    return await db.owner.fetchval("SELECT count(*) FROM asset_events")
++
++
++# ---- 201 lifecycles (one test per kind; counts read from the DB) -------------
++
++
++async def test_acquired_with_source_and_optional_ledger_link_is_stored(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++    purchase = await client.post(
++        "/api/v1/deposits",
++        json={"amount": 500, "occurred_on": "2026-02-01", "source": "other"},
++        headers=auth,
++    )
++    assert purchase.status_code == 201
++
++    linked = await event(
++        client,
++        auth,
++        thing["id"],
++        "acquired",
++        source="purchase",
++        ledger_transaction_id=purchase.json()["id"],
++    )
++    assert linked.status_code == 201
++    body = linked.json()
++    assert set(body) == EVENT_FIELDS
++    assert (
++        body["asset_id"],
++        body["kind"],
++        body["quantity"],
++        body["occurred_on"],
++        body["note"],
++    ) == (
++        thing["id"],
++        "acquired",
++        10,
++        "2026-02-01",
++        "",
++    )
++    row = await stored_event(lab, body["id"])
++    assert (row["kind"], row["source"], row["member_id"], row["recorded_by"]) == (
++        "acquired",
++        "purchase",
++        None,
++        USERNAME,
++    )
++    assert row["ledger_transaction_id"] == purchase.json()["id"]
++
++    plain = await event(client, auth, thing["id"], "acquired", source="admin", quantity=1)
++    assert plain.status_code == 201
++    row = await stored_event(lab, plain.json()["id"])
++    assert row["ledger_transaction_id"] is None
++
++
++async def test_lend_then_return_moves_the_held_count(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++    person = await borrower(client, auth)
++    acquired = await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
++    assert acquired.status_code == 201
++
++    lent = await event(client, auth, thing["id"], "lent", quantity=2, member_id=person["id"])
++    assert lent.status_code == 201
++    assert set(lent.json()) == EVENT_FIELDS
++    assert lent.json()["kind"] == "lent"
++    assert await buckets(lab, thing["id"]) == {
++        "stock": 2,
++        "damaged": 0,
++        "lost": 0,
++        "scrapped": 0,
++        "exchanged": 0,
++        "held": 2,
++    }
++    assert await held_by(lab, thing["id"], person["id"]) == 2
++
++    returned = await event(
++        client, auth, thing["id"], "returned", quantity=1, member_id=person["id"]
++    )
++    assert returned.status_code == 201
++    assert (await buckets(lab, thing["id"]))["held"] == 1
++    assert await held_by(lab, thing["id"], person["id"]) == 1
++
++
++async def test_damaged_by_a_member_moves_held_to_damaged(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++    person = await borrower(client, auth)
++    await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
++    lent = await event(client, auth, thing["id"], "lent", quantity=2, member_id=person["id"])
++    assert lent.status_code == 201
++
++    response = await event(
++        client,
++        auth,
++        thing["id"],
++        "damaged",
++        quantity=1,
++        member_id=person["id"],
++        note="burnt, reverse polarity",
++    )
++
++    assert response.status_code == 201
++    assert await buckets(lab, thing["id"]) == {
++        "stock": 2,
++        "damaged": 1,
++        "lost": 0,
++        "scrapped": 0,
++        "exchanged": 0,
++        "held": 1,
++    }
++    assert await held_by(lab, thing["id"], person["id"]) == 1
++
++
++async def test_lost_from_stock_and_scrapped_from_damaged(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++    await event(client, auth, thing["id"], "acquired", quantity=5, source="purchase")
++    lost = await event(client, auth, thing["id"], "lost", quantity=1, note="missing after workshop")
++    assert lost.status_code == 201
++    damaged = await event(client, auth, thing["id"], "damaged", quantity=1, note="dead display")
++    assert damaged.status_code == 201
++
++    scrapped = await event(client, auth, thing["id"], "scrapped", quantity=1, note="not repairable")
++
++    assert scrapped.status_code == 201
++    assert await buckets(lab, thing["id"]) == {
++        "stock": 3,
++        "damaged": 0,
++        "lost": 1,
++        "scrapped": 1,
++        "exchanged": 0,
++        "held": 0,
++    }
++
++
++async def test_repaired_moves_damaged_back_to_stock(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++    await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
++    damaged = await event(client, auth, thing["id"], "damaged", quantity=1, note="overheated")
++    assert damaged.status_code == 201
++    assert await buckets(lab, thing["id"]) == {
++        "stock": 3,
++        "damaged": 1,
++        "lost": 0,
++        "scrapped": 0,
++        "exchanged": 0,
++        "held": 0,
++    }
++
++    response = await event(client, auth, thing["id"], "repaired", quantity=1)
++
++    assert response.status_code == 201
++    assert await buckets(lab, thing["id"]) == {
++        "stock": 4,
++        "damaged": 0,
++        "lost": 0,
++        "scrapped": 0,
++        "exchanged": 0,
++        "held": 0,
++    }
++
++
++async def test_exchanged_never_touches_stock(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """`asset_event_effects` (:696-714): scrapped and exchanged add 0 to stock."""
++    thing = await asset(client, auth)
++    await event(client, auth, thing["id"], "acquired", quantity=2, source="purchase")
++    damaged = await event(client, auth, thing["id"], "damaged", quantity=1, note="dead display")
++    assert damaged.status_code == 201
++
++    response = await event(
++        client,
++        auth,
++        thing["id"],
++        "exchanged",
++        quantity=1,
++        note="sent to admin for replacement",
++    )
++
++    assert response.status_code == 201
++    assert await buckets(lab, thing["id"]) == {
++        "stock": 1,
++        "damaged": 0,
++        "lost": 0,
++        "scrapped": 0,
++        "exchanged": 1,
++        "held": 0,
++    }
++
++
++async def test_a_correction_counts_the_physical_count_difference(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++    await event(client, auth, thing["id"], "acquired", quantity=5, source="purchase")
++
++    down = await event(
++        client, auth, thing["id"], "correction", quantity=-1, note="physical count found 5"
++    )
++    assert down.status_code == 201
++    assert (await buckets(lab, thing["id"]))["stock"] == 4
++
++    up = await event(
++        client, auth, thing["id"], "correction", quantity=2, note="two units resurfaced"
++    )
++    assert up.status_code == 201
++    assert (await buckets(lab, thing["id"]))["stock"] == 6
++
++
++# ---- app refusals: 422 validation_failed (Q4=a / Q5=a) -----------------------
++
++
++@pytest.mark.parametrize("kind", ["lent", "returned"])
++async def test_lending_and_returning_need_a_member(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str], kind: str
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(client, auth, thing["id"], kind, quantity=1)
++
++    assert_problem(response, 422, "validation_failed")
++    assert await event_count(lab) == 0
++
++
++@pytest.mark.parametrize(
++    ("kind", "extra"),
++    [
++        ("acquired", {"source": "purchase"}),
++        ("repaired", {}),
++        ("scrapped", {"note": "not repairable"}),
++        ("exchanged", {"note": "sent to admin"}),
++        ("correction", {"note": "count 5"}),
++    ],
++)
++async def test_the_other_kinds_take_no_member(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str], kind: str, extra: dict[str, Any]
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(client, auth, thing["id"], kind, quantity=1, member_id=1, **extra)
++
++    assert_problem(response, 422, "validation_failed")
++    assert await event_count(lab) == 0
++
++
++async def test_acquired_needs_a_source(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(client, auth, thing["id"], "acquired", quantity=1)
++
++    assert_problem(response, 422, "validation_failed")
++    assert await event_count(lab) == 0
++
++
++@pytest.mark.parametrize("kind", ["repaired", "damaged"])
++async def test_the_other_kinds_take_no_source(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str], kind: str
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(client, auth, thing["id"], kind, quantity=1, source="purchase", note="n")
++
++    assert_problem(response, 422, "validation_failed")
++    assert await event_count(lab) == 0
++
++
++@pytest.mark.parametrize("kind", ["damaged", "lost", "scrapped", "exchanged", "correction"])
++@pytest.mark.parametrize("note", ["", "   "])
++async def test_a_blank_note_is_refused_on_the_kinds_that_need_one(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str], kind: str, note: str
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(client, auth, thing["id"], kind, quantity=1, note=note)
++
++    assert_problem(response, 422, "validation_failed")
++    assert await event_count(lab) == 0
++
++
++async def test_a_zero_quantity_is_refused(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(client, auth, thing["id"], "acquired", quantity=0, source="purchase")
++
++    assert_problem(response, 422, "validation_failed")
++    assert await event_count(lab) == 0
++
++
++@pytest.mark.parametrize("kind", ["acquired", "lent"])
++async def test_a_negative_quantity_is_only_for_a_correction(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str], kind: str
++) -> None:
++    thing = await asset(client, auth)
++
++    body: dict[str, Any] = {"kind": kind, "quantity": -1, "occurred_on": "2026-02-01"}
++    if kind == "acquired":
++        body["source"] = "purchase"
++    else:
++        body["member_id"] = 1
++    response = await client.post(f"/api/v1/assets/{thing['id']}/events", json=body, headers=auth)
++
++    assert_problem(response, 422, "validation_failed")
++    assert await event_count(lab) == 0
++
++
++# ---- framework answers -------------------------------------------------------
++
++
++@pytest.mark.parametrize("quantity", [10.5, True, "10"])
++async def test_a_non_whole_quantity_is_a_validation_error(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str], quantity: Any
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(
++        client, auth, thing["id"], "acquired", quantity=quantity, source="purchase"
++    )
++
++    assert_problem(response, 422, "validation_error")
++    assert await event_count(lab) == 0
++
++
++async def test_a_non_numeric_asset_id_is_422(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    response = await client.post(
++        "/api/v1/assets/abc/events",
++        json=event_body("acquired", source="purchase"),
++        headers=auth,
++    )
++
++    assert_problem(response, 422, "validation_error")
++
++
++async def test_recording_an_event_without_a_token_is_401(client: AsyncClient, lab: TestDb) -> None:
++    response = await client.post(
++        "/api/v1/assets/1/events", json=event_body("acquired", source="purchase")
++    )
++
++    assert_problem(response, 401, "invalid_token")
++    assert await event_count(lab) == 0
++
++
++# ---- database rules: 409 rule_violation --------------------------------------
++
++
++async def test_lending_beyond_stock_is_409(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """`asset_bucket_check` (:763): "not enough in stock: short by N"."""
++    thing = await asset(client, auth)
++    person = await borrower(client, auth)
++    seeded = await event(client, auth, thing["id"], "acquired", quantity=2, source="purchase")
++    assert seeded.status_code == 201
++
++    response = await event(client, auth, thing["id"], "lent", quantity=3, member_id=person["id"])
++
++    assert_problem(response, 409, "rule_violation")
++    assert "not enough in stock" in response.json()["detail"]
++    assert (await buckets(lab, thing["id"]))["stock"] == 2
++
++
++async def test_returning_more_than_the_member_holds_is_409(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """`asset_bucket_check` (:767-770): "that member holds fewer units than
++    that"."""
++    thing = await asset(client, auth)
++    person = await borrower(client, auth)
++    await event(client, auth, thing["id"], "acquired", quantity=2, source="purchase")
++    lent = await event(client, auth, thing["id"], "lent", quantity=1, member_id=person["id"])
++    assert lent.status_code == 201
++
++    response = await event(
++        client, auth, thing["id"], "returned", quantity=2, member_id=person["id"]
++    )
++
++    assert_problem(response, 409, "rule_violation")
++    assert "fewer units" in response.json()["detail"]
++    assert await held_by(lab, thing["id"], person["id"]) == 1
++
++
++async def test_an_individual_asset_cannot_exist_twice(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """`asset_bucket_check` (:772-773): "an individually tracked asset can
++    only exist once"."""
++    thing = await asset(client, auth, mode="individual")
++    first = await event(client, auth, thing["id"], "acquired", quantity=1, source="admin")
++    assert first.status_code == 201
++
++    response = await event(client, auth, thing["id"], "acquired", quantity=1, source="admin")
++
++    assert_problem(response, 409, "rule_violation")
++    assert "only exist once" in response.json()["detail"]
++
++
++async def test_an_individual_asset_moves_one_unit_at_a_time(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """`asset_event_guard` (:733-734): "an individually tracked asset moves
++    one unit at a time"."""
++    thing = await asset(client, auth, mode="individual")
++    person = await borrower(client, auth)
++
++    response = await event(client, auth, thing["id"], "lent", quantity=2, member_id=person["id"])
++
++    assert_problem(response, 409, "rule_violation")
++    assert "one unit at a time" in response.json()["detail"]
++
++
++async def test_an_event_before_the_tenure_opened_is_409(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """`asset_event_guard` (:730-731); the message says "closed tenure", so it
++    falls through P0001 -> `rule_violation` (not DateBeforeTenure)."""
++    thing = await asset(client, auth)
++
++    response = await event(
++        client, auth, thing["id"], "acquired", occurred_on="2025-12-31", source="purchase"
++    )
++
++    assert_problem(response, 409, "rule_violation")
++    assert "closed tenure" in response.json()["detail"]
++    assert await event_count(lab) == 0
++
++
++# ---- references --------------------------------------------------------------
++
++
++async def test_an_event_for_an_unknown_asset_is_404(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    # Prove the route exists first: an unmatched path is a framework 404 too.
++    thing = await asset(client, auth)
++    known = await event(client, auth, thing["id"], "acquired", source="purchase")
++    assert known.status_code == 201
++
++    response = await event(client, auth, 9999, "acquired", source="purchase")
++
++    assert_problem(response, 404, "not_found")
++    assert "9999" in response.json()["detail"]
++    assert await event_count(lab) == 1
++
++
++async def test_an_unknown_member_is_unknown_reference(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """Q7=a: the foreign key answers (D-110). The current-member check in
++    `asset_event_guard` (:737-741) only bites on `lent`, so a `returned` event
++    reaches the FK with an unknown member."""
++    thing = await asset(client, auth)
++
++    response = await event(client, auth, thing["id"], "returned", quantity=1, member_id=9999)
++
++    assert_problem(response, 422, "unknown_reference")
++    assert await event_count(lab) == 0
++
++
++async def test_an_unknown_ledger_transaction_is_unknown_reference(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await asset(client, auth)
++
++    response = await event(
++        client, auth, thing["id"], "acquired", source="purchase", ledger_transaction_id=9999
++    )
++
++    assert_problem(response, 422, "unknown_reference")
++    assert await event_count(lab) == 0
+diff --git a/tests/assets/api/test_assets_api.py b/tests/assets/api/test_assets_api.py
+new file mode 100644
+index 0000000..3aaf5c7
+--- /dev/null
++++ b/tests/assets/api/test_assets_api.py
+@@ -0,0 +1,245 @@
++"""API tests for asset records: create, list, edit (roadmap step 9.1).
++
++Approved brief answers this session: Q1=a create, edit and the nine event
++kinds are all part of the step; Q2=a a plain `GET /api/v1/assets` list in id
++order with no counts (the counts are 9.3's `asset_state`); Q6=a an unknown
++asset in the URL is 404 `not_found` naming the id (D-108's pattern).
++
++Contract this file pins:
++    POST /api/v1/assets              201  AssetOut
++    GET  /api/v1/assets              200  [AssetOut]  id order
++    POST /api/v1/assets/{id}/edit    200  AssetOut    partial body
++
++AssetOut = {"id","name","mode","ownership","tag","note"}.
++
++Database rules these tests rely on (db/schema.sql, read this session):
++- `assets`: blank-name CHECK (:644), `note text NOT NULL DEFAULT ''` (:648),
++  partial unique index on lower(tag) named `assets_tag_unique` (:651);
++- `asset_guard` (:716-724): mode/ownership cannot change once the asset has
++  events (P0001 -> 409 `rule_violation`; the 23505 on the tag is 409
++  `unique`, D-059/D-068);
++- `labapp` may INSERT assets and UPDATE (name, tag, note, mode, ownership)
++  (:1194, :1199); asset records are not tenure-tied.
++
++Library APIs used, all verified in installed source this session:
++- `httpx.AsyncClient.get/post` (httpx 0.28.1, _client.py:1751,1838);
++- `asyncpg.Connection.fetchrow/fetchval` (asyncpg-stubs 0.32.0,
++  connection.pyi:725,746);
++- `pytest.mark.parametrize` (pytest 9.1.1, _pytest/python.py:1231);
++- the real `client` / `lab` / `auth` / `db` fixtures from tests/conftest.py.
++"""
++
++from typing import Any
++
++import pytest
++from httpx import AsyncClient
++
++from tests.conftest import TestDb
++
++FIELDS = {"id", "name", "mode", "ownership", "tag", "note"}
++
++
++def asset_body(**overrides: Any) -> dict[str, Any]:
++    body: dict[str, Any] = {"name": "ESP32 DevKit", "mode": "counted", "ownership": "lab"}
++    body.update(overrides)
++    return body
++
++
++def assert_problem(response: Any, status: int, code: str) -> None:
++    assert response.status_code == status
++    assert response.headers["content-type"].startswith("application/problem+json")
++    assert response.json()["code"] == code
++
++
++async def stored(db: TestDb, asset_id: int) -> dict[str, Any]:
++    row = await db.owner.fetchrow(
++        "SELECT id, name, mode::text AS mode, ownership::text AS ownership,"
++        " tag, note FROM assets WHERE id = $1",
++        asset_id,
++    )
++    assert row is not None
++    return dict(row)
++
++
++async def asset_count(db: TestDb) -> Any:
++    return await db.owner.fetchval("SELECT count(*) FROM assets")
++
++
++async def created(client: AsyncClient, auth: dict[str, str], **overrides: Any) -> dict[str, Any]:
++    response = await client.post("/api/v1/assets", json=asset_body(**overrides), headers=auth)
++    assert response.status_code == 201
++    return response.json()
++
++
++async def acquired(client: AsyncClient, auth: dict[str, str], asset_id: int) -> Any:
++    """Seed one event so `asset_guard` locks mode/ownership (Q1=a creates it)."""
++    body = {"kind": "acquired", "quantity": 5, "occurred_on": "2026-02-01", "source": "purchase"}
++    return await client.post(f"/api/v1/assets/{asset_id}/events", json=body, headers=auth)
++
++
++# ---- create -----------------------------------------------------------------
++
++
++async def test_create_asset_returns_201_and_it_is_stored(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    response = await client.post(
++        "/api/v1/assets",
++        json=asset_body(tag="ADM-001", note="main bench"),
++        headers=auth,
++    )
++
++    assert response.status_code == 201
++    body = response.json()
++    assert set(body) == FIELDS
++    assert (body["name"], body["mode"], body["ownership"], body["tag"], body["note"]) == (
++        "ESP32 DevKit",
++        "counted",
++        "lab",
++        "ADM-001",
++        "main bench",
++    )
++    assert await stored(lab, body["id"]) == body
++
++
++async def test_create_asset_without_tag_defaults_to_null(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    body = await created(client, auth)
++
++    assert body["tag"] is None
++    assert body["note"] == ""
++    assert await stored(lab, body["id"]) == body
++
++
++@pytest.mark.parametrize("name", ["", "   "])
++async def test_blank_name_is_refused(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str], name: str
++) -> None:
++    """The app refuses it before SQL, on create and on edit (D-070 Q4 pattern)."""
++    response = await client.post("/api/v1/assets", json=asset_body(name=name), headers=auth)
++
++    assert_problem(response, 422, "validation_failed")
++    assert await asset_count(lab) == 0
++
++    thing = await created(client, auth)
++    response = await client.post(
++        f"/api/v1/assets/{thing['id']}/edit", json={"name": name}, headers=auth
++    )
++
++    assert_problem(response, 422, "validation_failed")
++    assert (await stored(lab, thing["id"]))["name"] == "ESP32 DevKit"
++
++
++async def test_extra_field_is_422(client: AsyncClient, lab: TestDb, auth: dict[str, str]) -> None:
++    response = await client.post("/api/v1/assets", json=asset_body(colour="red"), headers=auth)
++
++    assert_problem(response, 422, "validation_error")
++    assert await asset_count(lab) == 0
++
++
++async def test_duplicate_tag_is_409_unique(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """The partial unique index is case-insensitive (db/schema.sql:651)."""
++    first = await created(client, auth, tag="ADM-001")
++    assert first["tag"] == "ADM-001"
++
++    response = await client.post(
++        "/api/v1/assets", json=asset_body(name="Copy", tag="adm-001"), headers=auth
++    )
++
++    assert_problem(response, 409, "unique")
++    assert "assets_tag_unique" in response.json()["detail"]
++    assert await asset_count(lab) == 1
++
++
++# ---- list -------------------------------------------------------------------
++
++
++async def test_list_assets_is_id_ordered(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    empty = await client.get("/api/v1/assets", headers=auth)
++    assert empty.status_code == 200
++    assert empty.json() == []
++
++    first = await created(client, auth)
++    second = await created(client, auth, name="Multimeter", ownership="admin")
++
++    response = await client.get("/api/v1/assets", headers=auth)
++
++    assert response.status_code == 200
++    rows = response.json()
++    assert [row["id"] for row in rows] == [first["id"], second["id"]]
++    assert all(set(row) == FIELDS for row in rows)
++    assert rows[1]["ownership"] == "admin"
++
++
++# ---- edit -------------------------------------------------------------------
++
++
++async def test_edit_changes_only_the_supplied_fields(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    thing = await created(client, auth, note="bench unit")
++
++    response = await client.post(
++        f"/api/v1/assets/{thing['id']}/edit",
++        json={"name": "Oscilloscope (Rigol)", "tag": "LAB-9"},
++        headers=auth,
++    )
++
++    assert response.status_code == 200
++    body = response.json()
++    assert set(body) == FIELDS
++    assert (body["name"], body["tag"], body["note"]) == (
++        "Oscilloscope (Rigol)",
++        "LAB-9",
++        "bench unit",
++    )
++    assert await stored(lab, thing["id"]) == body
++
++
++async def test_edit_unknown_asset_is_404(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    # Prove the route exists first: an unmatched path is a framework 404 too.
++    thing = await created(client, auth)
++    known = await client.post(
++        f"/api/v1/assets/{thing['id']}/edit", json={"note": "x"}, headers=auth
++    )
++    assert known.status_code == 200
++
++    response = await client.post("/api/v1/assets/9999/edit", json={"note": "x"}, headers=auth)
++
++    assert_problem(response, 404, "not_found")
++    assert "9999" in response.json()["detail"]
++
++
++async def test_edit_mode_after_events_is_409(
++    client: AsyncClient, lab: TestDb, auth: dict[str, str]
++) -> None:
++    """`asset_guard` (:719-722): "mode and ownership cannot change once an
++    asset has events; create a new asset"."""
++    thing = await created(client, auth)
++    seeded = await acquired(client, auth, thing["id"])
++    assert seeded.status_code == 201
++
++    response = await client.post(
++        f"/api/v1/assets/{thing['id']}/edit", json={"mode": "individual"}, headers=auth
++    )
++
++    assert_problem(response, 409, "rule_violation")
++    assert "cannot change" in response.json()["detail"]
++    assert (await stored(lab, thing["id"]))["mode"] == "counted"
++
++
++# ---- auth -------------------------------------------------------------------
++
++
++async def test_creating_an_asset_without_a_token_is_401(client: AsyncClient, lab: TestDb) -> None:
++    response = await client.post("/api/v1/assets", json=asset_body())
++
++    assert_problem(response, 401, "invalid_token")
++    assert await asset_count(lab) == 0
+diff --git a/tests/assets/unit/__init__.py b/tests/assets/unit/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tests/assets/unit/test_asset_domain.py b/tests/assets/unit/test_asset_domain.py
+new file mode 100644
+index 0000000..5974f1b
+--- /dev/null
++++ b/tests/assets/unit/test_asset_domain.py
+@@ -0,0 +1,96 @@
++"""Domain tests for the asset record value object (roadmap step 9.1).
++
++Approved brief answers this session: Q1=a the step carries asset records
++(create + edit) and all nine event kinds; Q2=a a plain `GET /api/v1/assets`
++list; Q5=a the app refuses the kind-shape violations as 422
++`validation_failed` before SQL; Q6=a an unknown asset in the URL is 404
++`not_found` naming the id; Q8=a the event response is
++`{"id","asset_id","kind","quantity","occurred_on","note"}`; Q9=a
++`ledger_transaction_id` is an optional body field on `acquired`.
++
++What these tests pin (the domain API /code must provide):
++- `AssetMode`: the two members of `asset_mode` (db/schema.sql:639)
++- `AssetOwner`: the two members of `asset_owner` (db/schema.sql:640)
++- `Asset.create(name=..., mode=..., ownership=..., tag=None, note="")`:
++  keeps its fields; `mode`/`ownership` are plain strings here (the API layer
++  validates them against the enums), and a blank name is refused with
++  `ValidationFailed` - the D-070 Q4 / D-101 Q6=b app-side pattern, with the
++  column CHECK at db/schema.sql:644 as the backstop.
++
++Not tested here, on purpose: the case-insensitive tag uniqueness lives in the
++partial unique index `assets_tag_unique` (db/schema.sql:651) and the
++mode/ownership immutability once events exist in `asset_guard`
++(db/schema.sql:716-724); both are pinned by the API tests.
++
++The module is imported lazily (D-069): ruff classifies an import of a module
++that does not exist yet as third-party, and the lazy import keeps each test's
++failure individual instead of one collection error for the whole file.
++"""
++
++from importlib import import_module
++from types import ModuleType
++from typing import Any
++
++import pytest
++
++from mesl_finance.shared.errors import ValidationFailed
++
++MODE_MEMBERS = [("INDIVIDUAL", "individual"), ("COUNTED", "counted")]
++OWNER_MEMBERS = [("LAB", "lab"), ("ADMIN", "admin")]
++
++
++def _module() -> ModuleType:
++    try:
++        return import_module("mesl_finance.assets.domain.asset")
++    except ModuleNotFoundError:
++        pytest.fail("src/mesl_finance/assets/domain/asset.py does not exist yet")
++
++
++def _asset_class() -> Any:
++    return vars(_module())["Asset"]
++
++
++def _mode() -> Any:
++    return vars(_module())["AssetMode"]
++
++
++def _owner() -> Any:
++    return vars(_module())["AssetOwner"]
++
++
++def test_asset_modes_match_the_schema_enum() -> None:
++    assert [(member.name, member.value) for member in _mode()] == MODE_MEMBERS
++
++
++def test_asset_owners_match_the_schema_enum() -> None:
++    assert [(member.name, member.value) for member in _owner()] == OWNER_MEMBERS
++
++
++def test_an_asset_keeps_its_fields() -> None:
++    thing = _asset_class().create(
++        name="Oscilloscope",
++        mode="individual",
++        ownership="admin",
++        tag="ADM-001",
++        note="main bench",
++    )
++
++    assert (thing.name, thing.mode, thing.ownership, thing.tag, thing.note) == (
++        "Oscilloscope",
++        "individual",
++        "admin",
++        "ADM-001",
++        "main bench",
++    )
++
++
++def test_tag_and_note_default_to_empty() -> None:
++    thing = _asset_class().create(name="ESP32 DevKit", mode="counted", ownership="lab")
++
++    assert (thing.tag, thing.note) == (None, "")
++
++
++@pytest.mark.parametrize("name", ["", "   ", "\t\n "])
++def test_a_blank_name_is_refused(name: str) -> None:
++    with pytest.raises(ValidationFailed, match="name"):
++        _asset_class().create(name=name, mode="counted", ownership="lab")
+diff --git a/tests/assets/unit/test_asset_event_domain.py b/tests/assets/unit/test_asset_event_domain.py
+new file mode 100644
+index 0000000..3de586b
+--- /dev/null
++++ b/tests/assets/unit/test_asset_event_domain.py
+@@ -0,0 +1,236 @@
++"""Domain tests for the asset event value object (roadmap step 9.1).
++
++Approved brief answers this session: Q4=a a strict positive whole `quantity`
++for every kind except `correction`, which may be negative or positive; Q5=a
++the app refuses the kind-shape rules (source only on `acquired`, member only
++on `lent`/`returned`/`damaged`/`lost`, a required non-blank note on
++`damaged`/`lost`/`scrapped`/`exchanged`/`correction`) as 422
++`validation_failed` before SQL; Q8=a the event response carries no counts.
++Reversal/replacement is 9.2 and stays out.
++
++What these tests pin (the domain API /code must provide):
++- `AssetEventKind`: the nine members of `asset_event_kind`
++  (db/schema.sql:653-654), in the enum's own order
++- `AcquireSource`: the six members of `acquire_source` (db/schema.sql:655)
++- `AssetEvent.create(kind=..., quantity=..., occurred_on=..., member_id=None,
++  source=None, ledger_transaction_id=None, note="")` refuses with
++  `ValidationFailed`:
++  - a non-`int` quantity (the D-047/D-081 strictness; `bool` refused)
++  - a zero quantity (db/schema.sql:661 backstop)
++  - a negative quantity on a non-`correction` kind (db/schema.sql:677)
++  - a missing `source` on `acquired` and a `source` elsewhere
++    (db/schema.sql:672) - the app pre-refusal Q5=a chose
++  - a missing `member_id` on `lent`/`returned` and a `member_id` on any other
++    kind (db/schema.sql:674-676) - app pre-refusal Q5=a
++  - a blank note on the five kinds that require one (db/schema.sql:678-679)
++    - app pre-refusal Q5=a
++
++Not tested here, on purpose: the ledger link only on `acquired`
++(db/schema.sql:673) was not part of the approved Q5 enumeration, so the CHECK
++stays the backstop and no test pins it; stock/bucket arithmetic is
++PostgreSQL's (`asset_event_effects`, db/schema.sql:696-714) and is pinned by
++the API tests; `ledger_transaction_id`/`reverses_id`/`replaces_id` shape rules
++are 9.2's.
++
++The module is imported lazily (D-069), like the other domain tests.
++"""
++
++from datetime import date
++from importlib import import_module
++from types import ModuleType
++from typing import Any
++
++import pytest
++
++from mesl_finance.shared.errors import ValidationFailed
++
++KIND_MEMBERS = [
++    ("ACQUIRED", "acquired"),
++    ("LENT", "lent"),
++    ("RETURNED", "returned"),
++    ("DAMAGED", "damaged"),
++    ("LOST", "lost"),
++    ("REPAIRED", "repaired"),
++    ("SCRAPPED", "scrapped"),
++    ("EXCHANGED", "exchanged"),
++    ("CORRECTION", "correction"),
++]
++SOURCE_MEMBERS = [
++    ("PURCHASE", "purchase"),
++    ("ADMIN", "admin"),
++    ("PROJECT_RETURN", "project_return"),
++    ("DONATION", "donation"),
++    ("REPLACEMENT", "replacement"),
++    ("OTHER", "other"),
++]
++
++
++def _module() -> ModuleType:
++    try:
++        return import_module("mesl_finance.assets.domain.asset_event")
++    except ModuleNotFoundError:
++        pytest.fail("src/mesl_finance/assets/domain/asset_event.py does not exist yet")
++
++
++def _event_class() -> Any:
++    return vars(_module())["AssetEvent"]
++
++
++def _kinds() -> Any:
++    return vars(_module())["AssetEventKind"]
++
++
++def _sources() -> Any:
++    return vars(_module())["AcquireSource"]
++
++
++def test_the_event_kinds_match_the_schema_enum() -> None:
++    assert [(member.name, member.value) for member in _kinds()] == KIND_MEMBERS
++
++
++def test_the_acquire_sources_match_the_schema_enum() -> None:
++    assert [(member.name, member.value) for member in _sources()] == SOURCE_MEMBERS
++
++
++def test_an_event_keeps_its_values() -> None:
++    thing = _event_class().create(
++        kind="lent",
++        quantity=2,
++        occurred_on=date(2026, 2, 1),
++        member_id=3,
++        note="for the weather station",
++    )
++
++    assert (thing.kind, thing.quantity, thing.member_id, thing.note) == (
++        "lent",
++        2,
++        3,
++        "for the weather station",
++    )
++
++
++@pytest.mark.parametrize("quantity", [10.5, "10", True])
++def test_a_non_whole_quantity_is_refused(quantity: Any) -> None:
++    with pytest.raises(ValidationFailed, match="whole"):
++        _event_class().create(
++            kind="acquired",
++            quantity=quantity,
++            occurred_on=date(2026, 2, 1),
++            source="purchase",
++        )
++
++
++def test_a_zero_quantity_is_refused() -> None:
++    with pytest.raises(ValidationFailed, match="zero"):
++        _event_class().create(
++            kind="acquired",
++            quantity=0,
++            occurred_on=date(2026, 2, 1),
++            source="purchase",
++        )
++
++
++@pytest.mark.parametrize("kind", ["acquired", "lent", "returned"])
++def test_a_negative_quantity_is_only_for_a_correction(kind: str) -> None:
++    body: dict[str, Any] = {
++        "kind": kind,
++        "quantity": -1,
++        "occurred_on": date(2026, 2, 1),
++    }
++    if kind == "acquired":
++        body["source"] = "purchase"
++    if kind == "lent":
++        body["member_id"] = 1
++
++    with pytest.raises(ValidationFailed, match="negative"):
++        _event_class().create(**body)
++
++
++def test_a_correction_may_be_negative_or_positive() -> None:
++    down = _event_class().create(
++        kind="correction", quantity=-1, occurred_on=date(2026, 2, 1), note="count 5"
++    )
++    up = _event_class().create(
++        kind="correction", quantity=2, occurred_on=date(2026, 2, 1), note="count 7"
++    )
++
++    assert (down.quantity, up.quantity) == (-1, 2)
++
++
++@pytest.mark.parametrize(
++    ("kind", "extra"),
++    [
++        ("acquired", {}),
++        ("repaired", {"source": "purchase"}),
++    ],
++)
++def test_the_source_pairs_only_with_acquired(kind: str, extra: dict[str, Any]) -> None:
++    body: dict[str, Any] = {"kind": kind, "quantity": 1, "occurred_on": date(2026, 2, 1), **extra}
++
++    with pytest.raises(ValidationFailed, match="source"):
++        _event_class().create(**body)
++
++
++def test_an_acquired_event_keeps_its_source() -> None:
++    thing = _event_class().create(
++        kind="acquired", quantity=10, occurred_on=date(2026, 2, 1), source="purchase"
++    )
++
++    assert thing.source == "purchase"
++
++
++@pytest.mark.parametrize("kind", ["lent", "returned"])
++def test_lending_and_returning_need_a_member(kind: str) -> None:
++    with pytest.raises(ValidationFailed, match="member"):
++        _event_class().create(kind=kind, quantity=1, occurred_on=date(2026, 2, 1))
++
++
++@pytest.mark.parametrize(
++    ("kind", "extra"),
++    [
++        ("acquired", {"source": "purchase"}),
++        ("repaired", {}),
++        ("scrapped", {"note": "not repairable"}),
++        ("exchanged", {"note": "sent to admin"}),
++        ("correction", {"note": "count 5"}),
++    ],
++)
++def test_the_other_kinds_take_no_member(kind: str, extra: dict[str, Any]) -> None:
++    body: dict[str, Any] = {
++        "kind": kind,
++        "quantity": 1,
++        "occurred_on": date(2026, 2, 1),
++        "member_id": 3,
++        **extra,
++    }
++
++    with pytest.raises(ValidationFailed, match="member"):
++        _event_class().create(**body)
++
++
++@pytest.mark.parametrize("kind", ["damaged", "lost"])
++def test_damage_and_loss_may_name_the_member_who_had_it(kind: str) -> None:
++    thing = _event_class().create(
++        kind=kind,
++        quantity=1,
++        occurred_on=date(2026, 2, 1),
++        member_id=3,
++        note="burnt, reverse polarity",
++    )
++
++    assert thing.member_id == 3
++
++
++@pytest.mark.parametrize("kind", ["damaged", "lost", "scrapped", "exchanged", "correction"])
++@pytest.mark.parametrize("note", ["", "   "])
++def test_a_blank_note_is_refused_on_the_kinds_that_need_one(kind: str, note: str) -> None:
++    with pytest.raises(ValidationFailed, match="note"):
++        _event_class().create(kind=kind, quantity=1, occurred_on=date(2026, 2, 1), note=note)
++
++
++def test_the_note_defaults_to_empty_where_one_is_not_needed() -> None:
++    thing = _event_class().create(
++        kind="acquired", quantity=10, occurred_on=date(2026, 2, 1), source="purchase"
++    )
++
++    assert thing.note == ""
+diff --git a/tests/assets/unit/test_asset_use_cases.py b/tests/assets/unit/test_asset_use_cases.py
+new file mode 100644
+index 0000000..a07bb4e
+--- /dev/null
++++ b/tests/assets/unit/test_asset_use_cases.py
+@@ -0,0 +1,130 @@
++"""The CreateAsset and RecordAssetEvent use cases: one transaction each.
++
++Approved brief this session (tests 7 and 8 of the step brief): each write use
++case commits once in its own transaction and passes the JWT actor down, the
++same shape as the ledger and member write use cases. The slices declare their
++own ports (D-085 pattern): ``AssetRepository`` with ``create_asset`` and
++``add_event``, and an ``AssetUnitOfWork`` exposing it as ``.assets``.
++"""
++
++from datetime import date
++from importlib import import_module
++from types import ModuleType, TracebackType
++from typing import Any, Self
++
++import pytest
++
++
++def _module(name: str) -> ModuleType:
++    try:
++        return import_module(name)
++    except ModuleNotFoundError:
++        pytest.fail(f"{name} does not exist yet")
++
++
++def _create_class() -> Any:
++    return vars(_module("mesl_finance.assets.application.create_asset"))["CreateAsset"]
++
++
++def _create_command() -> Any:
++    return vars(_module("mesl_finance.assets.application.create_asset"))["CreateAssetCommand"]
++
++
++def _event_use_case() -> Any:
++    return vars(_module("mesl_finance.assets.application.record_event"))["RecordAssetEvent"]
++
++
++def _event_command() -> Any:
++    return vars(_module("mesl_finance.assets.application.record_event"))["RecordEventCommand"]
++
++
++def asset_command(**overrides: object) -> Any:
++    fields: dict[str, object] = {
++        "name": "ESP32 DevKit",
++        "mode": "counted",
++        "ownership": "lab",
++    }
++    fields.update(overrides)
++    return _create_command()(**fields)
++
++
++def event_command(**overrides: object) -> Any:
++    fields: dict[str, object] = {
++        "asset_id": 5,
++        "kind": "acquired",
++        "quantity": 10,
++        "occurred_on": date(2026, 2, 1),
++        "source": "purchase",
++    }
++    fields.update(overrides)
++    return _event_command()(**fields)
++
++
++class FakeAssets:
++    def __init__(self) -> None:
++        self.created: list[tuple[Any, str]] = []
++        self.events: list[tuple[int, Any, str]] = []
++        self.next_id = 42
++
++    async def create_asset(self, asset: Any, recorded_by: str) -> Any:
++        self.created.append((asset, recorded_by))
++        return self.next_id
++
++    async def add_event(self, asset_id: int, event: Any, recorded_by: str) -> int:
++        self.events.append((asset_id, event, recorded_by))
++        return self.next_id
++
++
++class FakeUow:
++    def __init__(self, actor: str, assets: FakeAssets | None = None) -> None:
++        self.actor = actor
++        self.assets = FakeAssets() if assets is None else assets
++        self.committed = False
++
++    async def __aenter__(self) -> Self:
++        return self
++
++    async def __aexit__(
++        self,
++        exc_type: type[BaseException] | None,
++        exc: BaseException | None,
++        tb: TracebackType | None,
++    ) -> None:
++        return None
++
++    async def commit(self) -> None:
++        self.committed = True
++
++
++def _factory(uows: list[FakeUow]) -> Any:
++    def factory(actor: str) -> FakeUow:
++        uows.append(FakeUow(actor))
++        return uows[-1]
++
++    return factory
++
++
++async def test_create_asset_commits_once_in_one_transaction() -> None:
++    uows: list[FakeUow] = []
++
++    view = await _create_class()(_factory(uows))(asset_command(), actor="treasurer")
++
++    uow = uows[0]
++    assert uow.actor == "treasurer"
++    assert uow.committed
++    asset, recorded_by = uow.assets.created[0]
++    assert (asset.name, recorded_by) == ("ESP32 DevKit", "treasurer")
++    assert view.id == 42
++
++
++async def test_record_event_commits_once_in_one_transaction() -> None:
++    uows: list[FakeUow] = []
++
++    view = await _event_use_case()(_factory(uows))(event_command(member_id=3), actor="treasurer")
++
++    uow = uows[0]
++    assert uow.actor == "treasurer"
++    assert uow.committed
++    asset_id, event, recorded_by = uow.assets.events[0]
++    assert (asset_id, event.kind, event.quantity, recorded_by) == (5, "acquired", 10, "treasurer")
++    assert (view.id, view.asset_id, view.kind, view.quantity) == (42, 5, "acquired", 10)

@@ -1,0 +1,56 @@
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from mesl_finance.assets.domain.asset import AssetMode, AssetOwner
+from mesl_finance.assets.domain.asset_event import AcquireSource, AssetEventKind
+
+
+class AssetOut(BaseModel):
+    id: int
+    name: str
+    mode: str
+    ownership: str
+    tag: str | None
+    note: str
+
+
+class CreateAssetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    mode: AssetMode
+    ownership: AssetOwner
+    tag: str | None = None
+    note: str = ""
+
+
+class EditAssetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    tag: str | None = None
+    note: str | None = None
+    mode: AssetMode | None = None
+    ownership: AssetOwner | None = None
+
+
+class AssetEventOut(BaseModel):
+    id: int
+    asset_id: int
+    kind: str
+    quantity: int
+    occurred_on: date
+    note: str
+
+
+class AssetEventRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: AssetEventKind
+    quantity: int = Field(strict=True)
+    occurred_on: date
+    member_id: int | None = None
+    source: AcquireSource | None = None
+    ledger_transaction_id: int | None = None
+    note: str = ""
