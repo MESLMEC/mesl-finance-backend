@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from mesl_finance.auth.api.dependencies import current_actor
 from mesl_finance.envelopes.api.schemas import (
     AllocationContextOut,
+    AllocationSuggestionOut,
+    AllocationSuggestionRequest,
     CreateEnvelopeRequest,
     EnvelopeOut,
     EnvelopeSettingsRequest,
@@ -15,11 +17,16 @@ from mesl_finance.envelopes.application.create_envelope import (
     CreateEnvelopeCommand,
 )
 from mesl_finance.envelopes.application.deactivate_envelope import DeactivateEnvelope
+from mesl_finance.envelopes.application.draft_allocation import DraftAllocation
 from mesl_finance.envelopes.application.get_allocation_context import GetAllocationContext
 from mesl_finance.envelopes.application.list_envelopes import ListEnvelopes
 from mesl_finance.envelopes.application.rename_envelope import RenameEnvelope
 from mesl_finance.envelopes.application.update_envelope_settings import UpdateEnvelopeSettings
 from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
+from mesl_finance.envelopes.domain.allocation_suggestion import (
+    AllocationSuggestionQuery,
+    AllocationSuggestionView,
+)
 from mesl_finance.envelopes.domain.envelope import EnvelopeView
 
 router = APIRouter(tags=["envelopes"])
@@ -35,6 +42,10 @@ def get_list_envelopes(request: Request) -> ListEnvelopes:
 
 def get_allocation_context(request: Request) -> GetAllocationContext:
     return cast(GetAllocationContext, request.app.state.get_allocation_context)
+
+
+def get_draft_allocation(request: Request) -> DraftAllocation:
+    return cast(DraftAllocation, request.app.state.draft_allocation)
 
 
 def get_rename_envelope(request: Request) -> RenameEnvelope:
@@ -65,6 +76,19 @@ def _context_out(view: AllocationContextView) -> AllocationContextOut:
         pool_balance=view.pool_balance,
         member_credit_held=view.member_credit_held,
         pool_after_member_credit=view.pool_after_member_credit,
+    )
+
+
+def _suggestion_out(view: AllocationSuggestionView) -> AllocationSuggestionOut:
+    return AllocationSuggestionOut(
+        envelope_id=view.envelope_id,
+        envelope_name=view.envelope_name,
+        balance=view.balance,
+        target_cap=view.target_cap,
+        alloc_priority=view.alloc_priority,
+        gap=view.gap,
+        phase=view.phase,
+        suggested=view.suggested,
     )
 
 
@@ -131,3 +155,14 @@ async def get_allocation_context_view(
 ) -> AllocationContextOut:
     view = await get_context(actor=user)
     return _context_out(view)
+
+
+@router.post("/allocation-suggestion")
+async def post_allocation_suggestion(
+    body: AllocationSuggestionRequest,
+    user: Annotated[str, Depends(current_actor)],
+    draft_allocation: Annotated[DraftAllocation, Depends(get_draft_allocation)],
+) -> list[AllocationSuggestionOut]:
+    query = AllocationSuggestionQuery(amount=body.amount, shares=body.shares)
+    views = await draft_allocation(query, actor=user)
+    return [_suggestion_out(view) for view in views]

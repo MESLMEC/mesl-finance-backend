@@ -201,7 +201,13 @@ How the app needs are met with ZERO schema changes:
 - [x] **8.0** Port `06_allocation_and_sweeps.sql` to `tests/db/`. needs: 1.4 [P-007]
   Notes: TEST-ONLY, 28 cases in `tests/db/test_allocation_and_sweeps.py` (coverage table in its
   docstring); the example's three odd lines and the close balances are recorded in D-115/D-116.
-- [ ] **8.1** Allocation draft (`allocation_suggestion`, read-only). needs: 5.1, 8.0
+- [x] **8.1** Allocation draft (`allocation_suggestion`, read-only). needs: 5.1, 8.0
+  Notes: CODE-WITH-TESTS, 18 cases (2 unit, 16 API), operation inventory 31 -> 32
+  (D-117/D-118). `POST /api/v1/allocation-suggestion` takes `{amount, shares?}` and returns
+  the function's 8 columns in its own order; it writes nothing and does not commit. An
+  explicit NULL `shares` reaches the function's reuse-the-last-session branch, so a reuse
+  test must confirm the cap fills too, else the gaps eat the remainder first (D-119).
+  `docs/openapi.json` stays 8.4's.
 - [ ] **8.2** Confirm allocation (`allocate`, one transaction). needs: 8.1, 6.2
 - [ ] **8.3** Event leftover (`cost_center_summary`) and sweep to the pool (`sweep_leftover`). needs: 5.2, 6.2, 8.0
 - [ ] **8.4** Refresh `docs/openapi.json`. needs: 8.3 [P-003]

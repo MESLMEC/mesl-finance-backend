@@ -752,3 +752,25 @@ Gates this session (final run): `uv run pytest` 588 passed; `uv run ruff check .
 `uv run ruff format --check .` "218 files already formatted"; `uv run pyright` "0 errors, 0 warnings,
 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL until this batch and the ROADMAP tick were
 written.
+
+## Added 2026-10-28 (forty-first batch, step 8.1 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-117 | 2026-10-28 | Step 8.1 shape: every question Q1-Q7 was answered by the generic approval, so the brief's labelled suggestions stand (same pattern as D-062/D-064/D-066/D-070/D-076/D-079/D-082/D-086/D-088/D-090/D-093/D-096/D-101/D-104/D-106/D-109/D-111): (Q1=a) `POST /api/v1/allocation-suggestion` with body `{amount: int, shares: {"<envelope_id>": int} | null}` - a READ that writes nothing, chosen because `p_shares` is a JSON object; (Q2=a) every row the function returns, in its own order, field names `envelope_id, envelope_name, balance, target_cap, alloc_priority, gap, phase, suggested`; (Q3=a) `amount` strict whole number with `amount <= 0` refused by the app as 422 `validation_failed` while a non-integer is FastAPI's 422 `validation_error` (D-081 (1)); (Q4=a) `shares` accepted as-is, string keys + strict-int values, no key/sign rule invented (PostgreSQL ignores keys naming no eligible envelope); (Q5=a) the slice lives in `envelopes` (own `DraftAllocationRepository`/`DraftAllocationUnitOfWork`, D-085); (Q6=a) no open-tenure call (7.5's Q9=a); (Q7=a) raw rows only, no total/remainder field. 18 new cases (2 use-case unit, 16 API) and the operation inventory grew 31 -> 32. | "The user approved the step brief for: go (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 8.1, D-085, D-111, D-081 |
+| D-118 | 2026-10-28 | The user authorised the coder to fix ONE defective approved test file (other test edits stay tester-domain): `tests/envelopes/api/test_allocation_suggestion_api.py::test_the_draft_reuses_the_last_session_proportions` seeded the confirming session with only the three uncapped amounts (445/297/148 = 890), leaving both cap gaps pending, so `allocation_suggestion(600)` filled 110 of caps first and split the remaining 490 -> 245/163/82 instead of the asserted 300/200/100. Options were (a) add the cap fills to the seed like example 06 line 28, (b) change the expectations, (c) redesign the test. Option (a) was chosen; ONLY the seed gained `{ADMIN: 60, COMPONENTS: 50}` (full 1000, mirroring example lines 28-29). No assertion was weakened, deleted or skipped, and no production code was changed to satisfy it. | "a. fix the seeding" (after the coder's STOP report showing `assert 245 == 300`) | D-049, D-102, AGENTS.md section 2, ROADMAP 8.1 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-119 (proposed) | 2026-10-28 | Facts for later sessions. (1) Passing an explicit `NULL` for `p_shares` is equivalent to omitting it: the function's shares CTE branches on `p_shares IS NOT NULL` (db/schema.sql:480-483), so the adapter's single statement `allocation_suggestion(CAST(:amount AS integer), CAST(:shares AS jsonb))` serves both modes, with `json.dumps` in the bound parameter (never in the SQL text). (2) The last-session reuse reads the positive lines of the newest non-voided `allocation_sessions` transfer, but CAP GAPS ARE STILL FILLED FIRST: a confirming session must include the cap fills (example 06 line 28's `WHERE suggested > 0`), otherwise the next draft spends the remainder on the gaps and the proportions differ (D-118). (3) The API response returns `phase` as a plain `str` (`cap_fill`/`share`/`none`); the schema has no enum type for it. (4) `allocation_suggestion` is callable by `labapp` through the default PUBLIC EXECUTE (no REVOKE; only `close_tenure` is revoked, db/schema.sql:1202-1203). (5) The read is one transaction with no commit (`envelopes/application/draft_allocation.py:23-24`), and the tests prove no ledger/allocation rows are written. (6) Inventory 31 -> 32 in `tests/api/test_export_openapi.py`; `docs/openapi.json` was deliberately NOT regenerated (8.4 owns it, D-113/D-114). (7) Gate evidence: `uv run pytest` 606 passed (588 pre-existing + 18 new), `uv run ruff check .` "All checks passed!", `uv run ruff format --check .` "222 files already formatted", `uv run pyright` "0 errors, 0 warnings, 0 informations". | gate runs, red/green runs, audit and installed-source reads this session; db/schema.sql:457-503,1202-1203; test reproduction `assert 245 == 300` |
+
+### Evidence for the step close
+
+Gates this session (final run): `uv run pytest` 606 passed (588 pre-existing + 18 new);
+`uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "222 files already
+formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS;
+item 7 FAIL until this batch, D-118 and the ROADMAP tick were written.

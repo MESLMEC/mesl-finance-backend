@@ -1,6 +1,11 @@
+import json
 from typing import Any
 
 from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
+from mesl_finance.envelopes.domain.allocation_suggestion import (
+    AllocationSuggestionQuery,
+    AllocationSuggestionView,
+)
 from mesl_finance.envelopes.domain.envelope import Envelope, EnvelopeView
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
@@ -103,3 +108,43 @@ class SqlAllocationContextRepository:
             member_credit_held=int(row["member_credit_held"]),
             pool_after_member_credit=int(row["pool_after_member_credit"]),
         )
+
+
+class SqlDraftAllocationRepository:
+    """The allocation draft read: ``allocation_suggestion()`` (step 8.1 Q1=a)."""
+
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def suggest(self, query: AllocationSuggestionQuery) -> list[AllocationSuggestionView]:
+        result = await self._uow.execute(
+            """
+            SELECT envelope_id, envelope_name, balance, target_cap, alloc_priority,
+                   gap, phase, suggested
+            FROM allocation_suggestion(
+                CAST(:amount AS integer), CAST(:shares AS jsonb)
+            )
+            """,
+            {
+                "amount": query.amount,
+                "shares": None if query.shares is None else json.dumps(query.shares),
+            },
+        )
+        return [_suggestion(row) for row in result.mappings().all()]
+
+
+def _optional_int(value: Any) -> int | None:
+    return None if value is None else int(value)
+
+
+def _suggestion(row: Any) -> AllocationSuggestionView:
+    return AllocationSuggestionView(
+        envelope_id=int(row["envelope_id"]),
+        envelope_name=str(row["envelope_name"]),
+        balance=int(row["balance"]),
+        target_cap=_optional_int(row["target_cap"]),
+        alloc_priority=_optional_int(row["alloc_priority"]),
+        gap=_optional_int(row["gap"]),
+        phase=str(row["phase"]),
+        suggested=int(row["suggested"]),
+    )

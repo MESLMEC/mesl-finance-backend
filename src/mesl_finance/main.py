@@ -19,6 +19,7 @@ from mesl_finance.cost_centers.infrastructure.unit_of_work import SqlCostCenterU
 from mesl_finance.envelopes.api.router import router as envelopes_router
 from mesl_finance.envelopes.application.create_envelope import CreateEnvelope
 from mesl_finance.envelopes.application.deactivate_envelope import DeactivateEnvelope
+from mesl_finance.envelopes.application.draft_allocation import DraftAllocation
 from mesl_finance.envelopes.application.get_allocation_context import GetAllocationContext
 from mesl_finance.envelopes.application.list_envelopes import ListEnvelopes
 from mesl_finance.envelopes.application.rename_envelope import RenameEnvelope
@@ -94,6 +95,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.update_envelope_settings = UpdateEnvelopeSettings(envelope_unit_of_work)
     app.state.deactivate_envelope = DeactivateEnvelope(envelope_unit_of_work)
     app.state.get_allocation_context = GetAllocationContext(envelope_unit_of_work)
+    app.state.draft_allocation = DraftAllocation(envelope_unit_of_work)
 
     def cost_center_unit_of_work(actor: str) -> SqlCostCenterUnitOfWork:
         return SqlCostCenterUnitOfWork(engine, actor)

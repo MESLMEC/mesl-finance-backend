@@ -1,6 +1,10 @@
 from typing import Protocol
 
 from mesl_finance.envelopes.domain.allocation_context import AllocationContextView
+from mesl_finance.envelopes.domain.allocation_suggestion import (
+    AllocationSuggestionQuery,
+    AllocationSuggestionView,
+)
 from mesl_finance.envelopes.domain.envelope import Envelope, EnvelopeView
 from mesl_finance.shared.ports import UnitOfWork
 
@@ -49,3 +53,18 @@ class AllocationContextUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def allocation_context(self) -> AllocationContextRepository: ...
+
+
+class DraftAllocationRepository(Protocol):
+    """What the allocation draft read needs; the write slices keep their own port."""
+
+    async def suggest(self, query: AllocationSuggestionQuery) -> list[AllocationSuggestionView]:
+        """The ``allocation_suggestion()`` rows, in the function's own order."""
+        ...
+
+
+class DraftAllocationUnitOfWork(UnitOfWork, Protocol):
+    """The allocation draft read's transaction scope."""
+
+    @property
+    def allocation_suggestion(self) -> DraftAllocationRepository: ...
