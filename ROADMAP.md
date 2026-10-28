@@ -266,7 +266,13 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 10: Reconciliation
 
-- [ ] **10.0** Port `07_reconciliation.sql` to `tests/db/`. needs: 1.4 [P-007]
+- [x] **10.0** Port `07_reconciliation.sql` to `tests/db/`. needs: 1.4 [P-007]
+  Notes: TEST-ONLY, 22 cases in `tests/db/test_reconciliation.py` (coverage table in its
+  docstring; no EXPECT markers, sections map by number). Facts for 10.1+: line 78's negative
+  total is the 23514 `counted_total >= 0` CHECK, not a function raise; lines 79-81 are P0001
+  and lines 82-84 are 42501 (`labapp` has only SELECT on `reconciliations`, so the privilege
+  wall fires before the triggers); `reconcile` defaults `checked_on` to `current_date`, so
+  `days_since_last_match` is 0 right after a match (D-146).
 - [ ] **10.1** `reconcile` action (counted total, optional per-envelope counts). needs: 6.2, 10.0
 - [ ] **10.2** Reads: reconciliation status, unverified entries, difference suspects. needs: 10.1
 - [ ] **10.3** Refresh `docs/openapi.json`. needs: 10.2 [P-003]
