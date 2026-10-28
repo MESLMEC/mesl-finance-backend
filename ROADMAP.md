@@ -287,7 +287,11 @@ How the app needs are met with ZERO schema changes:
   `.reconciliation_reads` (D-085); `?difference=` + optional `?envelope_id=` are bound CAST
   parameters to `difference_suspects`; `days_since_last_match` is an integer and NULL before
   any match. `docs/openapi.json` stays 10.3's.
-- [ ] **10.3** Refresh `docs/openapi.json`. needs: 10.2 [P-003]
+- [x] **10.3** Refresh `docs/openapi.json`. needs: 10.2 [P-003]
+  Notes: NO-TEST (D-152/D-153): regenerated with the documented command, so the file now
+  documents 48 operations / 69 schemas (9.5 snapshot: 44 / 64); the diff vs 9.5 is exactly the
+  10.1-10.2 additions - 4 operations, 5 schemas, nothing removed or changed - and a second
+  export is byte-identical; the committed-file freshness test stays 12.2's.
 
 ## Phase 11: Tenure handover
 

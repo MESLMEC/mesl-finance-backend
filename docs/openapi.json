@@ -872,6 +872,46 @@
         "title": "DepositRequest",
         "type": "object"
       },
+      "DifferenceSuspectOut": {
+        "description": "One `difference_suspects()` row (ROADMAP 10.2).",
+        "properties": {
+          "effect": {
+            "title": "Effect",
+            "type": "integer"
+          },
+          "entry_id": {
+            "title": "Entry Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "kind",
+          "occurred_on",
+          "effect",
+          "note",
+          "why"
+        ],
+        "title": "DifferenceSuspectOut",
+        "type": "object"
+      },
       "EditAssetRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1686,6 +1726,168 @@
         "title": "MembershipPeriodOut",
         "type": "object"
       },
+      "ReconcileOut": {
+        "description": "The recorded reconciliation, read back from the stored row.",
+        "properties": {
+          "counted_total": {
+            "title": "Counted Total",
+            "type": "integer"
+          },
+          "difference": {
+            "title": "Difference",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "boolean"
+          },
+          "system_total": {
+            "title": "System Total",
+            "type": "integer"
+          },
+          "through_entry_id": {
+            "title": "Through Entry Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "through_entry_id",
+          "system_total",
+          "counted_total",
+          "difference",
+          "matched"
+        ],
+        "title": "ReconcileOut",
+        "type": "object"
+      },
+      "ReconcileRequest": {
+        "additionalProperties": false,
+        "description": "What the treasurer counted against the screen.",
+        "properties": {
+          "counted": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional {\"<envelope_id>\": whole BDT} per-envelope counts",
+            "title": "Counted"
+          },
+          "counted_total": {
+            "description": "Whole BDT actually held / in notes",
+            "title": "Counted Total",
+            "type": "integer"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "counted_total"
+        ],
+        "title": "ReconcileRequest",
+        "type": "object"
+      },
+      "ReconciliationStatusOut": {
+        "description": "The `reconciliation_status` row (ROADMAP 10.2).",
+        "properties": {
+          "days_since_last_match": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Since Last Match"
+          },
+          "entries_since_last_match": {
+            "title": "Entries Since Last Match",
+            "type": "integer"
+          },
+          "last_match_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Match Date"
+          },
+          "last_match_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Match Id"
+          },
+          "last_match_through_entry": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Match Through Entry"
+          },
+          "latest_attempt_matched": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Attempt Matched"
+          },
+          "latest_difference": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Difference"
+          }
+        },
+        "required": [
+          "last_match_id",
+          "last_match_date",
+          "last_match_through_entry",
+          "days_since_last_match",
+          "entries_since_last_match",
+          "latest_attempt_matched",
+          "latest_difference"
+        ],
+        "title": "ReconciliationStatusOut",
+        "type": "object"
+      },
       "RefundCreated": {
         "properties": {
           "balance": {
@@ -2136,6 +2338,115 @@
           "note"
         ],
         "title": "TransferRequest",
+        "type": "object"
+      },
+      "UnverifiedEntryOut": {
+        "description": "One `unverified_entries` row, in the view's own column names (ROADMAP 10.2).",
+        "properties": {
+          "cost_center_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Center Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_voided": {
+            "title": "Is Voided",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "member_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Id"
+          },
+          "net_effect": {
+            "title": "Net Effect",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "reverses_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reverses Id"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "tenure_id": {
+            "title": "Tenure Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenure_id",
+          "kind",
+          "occurred_on",
+          "recorded_at",
+          "recorded_by",
+          "note",
+          "tag",
+          "cost_center_id",
+          "member_id",
+          "reverses_id",
+          "is_voided",
+          "net_effect",
+          "size"
+        ],
+        "title": "UnverifiedEntryOut",
         "type": "object"
       },
       "ValidationError": {
@@ -3119,6 +3430,73 @@
         ]
       }
     },
+    "/api/v1/difference-suspects": {
+      "get": {
+        "operationId": "read_difference_suspects_api_v1_difference_suspects_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "difference",
+            "required": true,
+            "schema": {
+              "title": "Difference",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "envelope_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Envelope Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DifferenceSuspectOut"
+                  },
+                  "title": "Response Read Difference Suspects Api V1 Difference Suspects Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Difference Suspects",
+        "tags": [
+          "reconciliation"
+        ]
+      }
+    },
     "/api/v1/dues": {
       "get": {
         "operationId": "get_dues_api_v1_dues_get",
@@ -4078,6 +4456,78 @@
         ]
       }
     },
+    "/api/v1/reconciliation-status": {
+      "get": {
+        "operationId": "read_reconciliation_status_api_v1_reconciliation_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Reconciliation Status",
+        "tags": [
+          "reconciliation"
+        ]
+      }
+    },
+    "/api/v1/reconciliations": {
+      "post": {
+        "operationId": "post_reconciliation_api_v1_reconciliations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Reconciliation",
+        "tags": [
+          "reconciliation"
+        ]
+      }
+    },
     "/api/v1/refunds": {
       "post": {
         "operationId": "post_refund_api_v1_refunds_post",
@@ -4287,6 +4737,36 @@
         "summary": "Post Transfer",
         "tags": [
           "ledger"
+        ]
+      }
+    },
+    "/api/v1/unverified-entries": {
+      "get": {
+        "operationId": "read_unverified_entries_api_v1_unverified_entries_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UnverifiedEntryOut"
+                  },
+                  "title": "Response Read Unverified Entries Api V1 Unverified Entries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Unverified Entries",
+        "tags": [
+          "reconciliation"
         ]
       }
     }
