@@ -228,7 +228,10 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 9: Assets
 
-- [ ] **9.0** Port `05_assets.sql` to `tests/db/`. needs: 1.4 [P-007]
+- [x] **9.0** Port `05_assets.sql` to `tests/db/`. needs: 1.4 [P-007]
+  Notes: TEST-ONLY, 35 cases in `tests/db/test_assets.py` (line-by-line coverage table in
+  its docstring); the 16 rejected statements split 13x P0001 / 3x 23514 / 2x 42501 and
+  line 85's asset rename is ALLOWED - the facts for 9.1+ are D-128.
 - [ ] **9.1** Asset records and events: acquired, lent, returned, damaged, lost, repaired, scrapped, exchanged, correction. needs: 7.1, 9.0
 - [ ] **9.2** Fix an asset event (reversal and replacement, one transaction). needs: 9.1
 - [ ] **9.3** Reads: asset state, who-has-what, admin replacement queue. needs: 9.1
