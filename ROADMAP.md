@@ -220,7 +220,11 @@ How the app needs are met with ZERO schema changes:
   8 columns and an unknown id is 404 naming it; `POST /api/v1/sweeps` answers
   `201 {id, kind: sweep, from_balance, pool_balance}` and is a thin app - everything but
   a blank note (422) reaches `sweep_leftover` as 409. `docs/openapi.json` stays 8.4's.
-- [ ] **8.4** Refresh `docs/openapi.json`. needs: 8.3 [P-003]
+- [x] **8.4** Refresh `docs/openapi.json`. needs: 8.3 [P-003]
+  Notes: NO-TEST (D-113): regenerated with the documented command, so the file now
+  documents 35 operations / 50 schemas (7.6 snapshot: 31 / 43); the diff is exactly the
+  8.1-8.3 additions and a second export is byte-identical (D-124/D-125); the committed-file
+  freshness test stays 12.2's.
 
 ## Phase 9: Assets
 

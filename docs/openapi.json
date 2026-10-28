@@ -62,6 +62,29 @@
         "title": "AdjustmentOut",
         "type": "object"
       },
+      "AllocationConfirmedOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "pool_balance": {
+            "title": "Pool Balance",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "pool_balance"
+        ],
+        "title": "AllocationConfirmedOut",
+        "type": "object"
+      },
       "AllocationContextOut": {
         "properties": {
           "member_credit_held": {
@@ -83,6 +106,136 @@
           "pool_after_member_credit"
         ],
         "title": "AllocationContextOut",
+        "type": "object"
+      },
+      "AllocationSuggestionOut": {
+        "properties": {
+          "alloc_priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alloc Priority"
+          },
+          "balance": {
+            "title": "Balance",
+            "type": "integer"
+          },
+          "envelope_id": {
+            "title": "Envelope Id",
+            "type": "integer"
+          },
+          "envelope_name": {
+            "title": "Envelope Name",
+            "type": "string"
+          },
+          "gap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "integer"
+          },
+          "target_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Cap"
+          }
+        },
+        "required": [
+          "envelope_id",
+          "envelope_name",
+          "balance",
+          "target_cap",
+          "alloc_priority",
+          "gap",
+          "phase",
+          "suggested"
+        ],
+        "title": "AllocationSuggestionOut",
+        "type": "object"
+      },
+      "AllocationSuggestionRequest": {
+        "additionalProperties": false,
+        "description": "The draft: whole taka to split, plus optional share weights per envelope.",
+        "properties": {
+          "amount": {
+            "description": "Whole BDT to split",
+            "title": "Amount",
+            "type": "integer"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional {\"<envelope_id>\": share} weights",
+            "title": "Shares"
+          }
+        },
+        "required": [
+          "amount"
+        ],
+        "title": "AllocationSuggestionRequest",
+        "type": "object"
+      },
+      "ConfirmAllocationRequest": {
+        "additionalProperties": false,
+        "description": "The confirmed split: whole taka per envelope id, plus the transfer's labels.",
+        "properties": {
+          "amounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "{\"<envelope_id>\": whole BDT}, every entry positive",
+            "title": "Amounts",
+            "type": "object"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_on",
+          "note",
+          "amounts"
+        ],
+        "title": "ConfirmAllocationRequest",
         "type": "object"
       },
       "CostCenterOut": {
@@ -111,6 +264,54 @@
           "status"
         ],
         "title": "CostCenterOut",
+        "type": "object"
+      },
+      "CostCenterSummaryOut": {
+        "properties": {
+          "cost_center_id": {
+            "title": "Cost Center Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "leftover": {
+            "title": "Leftover",
+            "type": "integer"
+          },
+          "money_in": {
+            "title": "Money In",
+            "type": "integer"
+          },
+          "money_out": {
+            "title": "Money Out",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "swept": {
+            "title": "Swept",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cost_center_id",
+          "name",
+          "kind",
+          "status",
+          "money_in",
+          "money_out",
+          "swept",
+          "leftover"
+        ],
+        "title": "CostCenterSummaryOut",
         "type": "object"
       },
       "CreateAdjustmentRequest": {
@@ -1290,6 +1491,66 @@
         "title": "StartPeriodRequest",
         "type": "object"
       },
+      "SweepCreated": {
+        "properties": {
+          "from_balance": {
+            "title": "From Balance",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EntryKind"
+          },
+          "pool_balance": {
+            "title": "Pool Balance",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "from_balance",
+          "pool_balance"
+        ],
+        "title": "SweepCreated",
+        "type": "object"
+      },
+      "SweepRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_center_id": {
+            "description": "The event's cost center",
+            "title": "Cost Center Id",
+            "type": "integer"
+          },
+          "from_envelope_id": {
+            "description": "The envelope holding the leftover",
+            "title": "From Envelope Id",
+            "type": "integer"
+          },
+          "note": {
+            "description": "Why the leftover is swept",
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cost_center_id",
+          "from_envelope_id",
+          "occurred_on",
+          "note"
+        ],
+        "title": "SweepRequest",
+        "type": "object"
+      },
       "TokenResponse": {
         "properties": {
           "access_token": {
@@ -1478,6 +1739,102 @@
           }
         ],
         "summary": "Get Allocation Context View",
+        "tags": [
+          "envelopes"
+        ]
+      }
+    },
+    "/api/v1/allocation-suggestion": {
+      "post": {
+        "operationId": "post_allocation_suggestion_api_v1_allocation_suggestion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllocationSuggestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AllocationSuggestionOut"
+                  },
+                  "title": "Response Post Allocation Suggestion Api V1 Allocation Suggestion Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Allocation Suggestion",
+        "tags": [
+          "envelopes"
+        ]
+      }
+    },
+    "/api/v1/allocations": {
+      "post": {
+        "operationId": "post_allocation_api_v1_allocations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmAllocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationConfirmedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Allocation",
         "tags": [
           "envelopes"
         ]
@@ -1751,6 +2108,53 @@
           }
         ],
         "summary": "Post Status",
+        "tags": [
+          "cost-centers"
+        ]
+      }
+    },
+    "/api/v1/cost-centers/{cost_center_id}/summary": {
+      "get": {
+        "operationId": "get_cost_center_summary_api_v1_cost_centers__cost_center_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cost_center_id",
+            "required": true,
+            "schema": {
+              "title": "Cost Center Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostCenterSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Cost Center Summary",
         "tags": [
           "cost-centers"
         ]
@@ -2878,6 +3282,52 @@
         "summary": "Post Shutdown Weeks",
         "tags": [
           "fees"
+        ]
+      }
+    },
+    "/api/v1/sweeps": {
+      "post": {
+        "operationId": "post_sweep_api_v1_sweeps_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SweepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SweepCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Sweep",
+        "tags": [
+          "cost-centers"
         ]
       }
     },
