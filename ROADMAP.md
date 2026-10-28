@@ -258,7 +258,11 @@ How the app needs are met with ZERO schema changes:
   "CSV-ready" is B-22's raw numbers, no CSV endpoint; the function's own six names and its
   own ORDER BY (name, kind ENUM ORDINAL: `lent` before `damaged`); a reversed window answers
   `[]`, not 422; `docs/openapi.json` stays 9.5's.
-- [ ] **9.5** Refresh `docs/openapi.json`. needs: 9.4 [P-003]
+- [x] **9.5** Refresh `docs/openapi.json`. needs: 9.4 [P-003]
+  Notes: NO-TEST (D-142): regenerated with the documented command, so the file now
+  documents 44 operations / 64 schemas (8.4 snapshot: 35 / 50); the diff is exactly the
+  9.1-9.4 additions - 9 operations, 14 schemas, nothing removed or changed - and a second
+  export is byte-identical (D-143); the committed-file freshness test stays 12.2's.
 
 ## Phase 10: Reconciliation
 

@@ -1,6 +1,19 @@
 {
   "components": {
     "schemas": {
+      "AcquireSource": {
+        "description": "Where an acquisition came from (db/schema.sql:655).",
+        "enum": [
+          "purchase",
+          "admin",
+          "project_return",
+          "donation",
+          "replacement",
+          "other"
+        ],
+        "title": "AcquireSource",
+        "type": "string"
+      },
       "AdjustmentKind": {
         "description": "The `adjustment_kind` enum (db/schema.sql:128).",
         "enum": [
@@ -208,6 +221,300 @@
         "title": "AllocationSuggestionRequest",
         "type": "object"
       },
+      "AssetActivityOut": {
+        "properties": {
+          "asset_name": {
+            "title": "Asset Name",
+            "type": "string"
+          },
+          "events": {
+            "title": "Events",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "ownership": {
+            "title": "Ownership",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_name",
+          "ownership",
+          "kind",
+          "source",
+          "units",
+          "events"
+        ],
+        "title": "AssetActivityOut",
+        "type": "object"
+      },
+      "AssetEventKind": {
+        "description": "The nine event kinds (db/schema.sql:653-654).",
+        "enum": [
+          "acquired",
+          "lent",
+          "returned",
+          "damaged",
+          "lost",
+          "repaired",
+          "scrapped",
+          "exchanged",
+          "correction"
+        ],
+        "title": "AssetEventKind",
+        "type": "string"
+      },
+      "AssetEventOut": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "asset_id",
+          "kind",
+          "quantity",
+          "occurred_on",
+          "note"
+        ],
+        "title": "AssetEventOut",
+        "type": "object"
+      },
+      "AssetEventRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AssetEventKind"
+          },
+          "ledger_transaction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Transaction Id"
+          },
+          "member_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Id"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcquireSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "quantity",
+          "occurred_on"
+        ],
+        "title": "AssetEventRequest",
+        "type": "object"
+      },
+      "AssetMode": {
+        "description": "The two tracking modes (db/schema.sql:639).",
+        "enum": [
+          "individual",
+          "counted"
+        ],
+        "title": "AssetMode",
+        "type": "string"
+      },
+      "AssetOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "ownership": {
+            "title": "Ownership",
+            "type": "string"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "mode",
+          "ownership",
+          "tag",
+          "note"
+        ],
+        "title": "AssetOut",
+        "type": "object"
+      },
+      "AssetOwner": {
+        "description": "Who the asset belongs to (db/schema.sql:640).",
+        "enum": [
+          "lab",
+          "admin"
+        ],
+        "title": "AssetOwner",
+        "type": "string"
+      },
+      "AssetStateOut": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "integer"
+          },
+          "asset_name": {
+            "title": "Asset Name",
+            "type": "string"
+          },
+          "damaged": {
+            "title": "Damaged",
+            "type": "integer"
+          },
+          "exchanged": {
+            "title": "Exchanged",
+            "type": "integer"
+          },
+          "lost": {
+            "title": "Lost",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "ownership": {
+            "title": "Ownership",
+            "type": "string"
+          },
+          "scrapped": {
+            "title": "Scrapped",
+            "type": "integer"
+          },
+          "stock": {
+            "title": "Stock",
+            "type": "integer"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "with_members": {
+            "title": "With Members",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_id",
+          "asset_name",
+          "ownership",
+          "mode",
+          "tag",
+          "stock",
+          "damaged",
+          "with_members",
+          "lost",
+          "scrapped",
+          "exchanged"
+        ],
+        "title": "AssetStateOut",
+        "type": "object"
+      },
       "ConfirmAllocationRequest": {
         "additionalProperties": false,
         "description": "The confirmed split: whole taka per envelope id, plus the transfer's labels.",
@@ -342,6 +649,44 @@
           "occurred_on"
         ],
         "title": "CreateAdjustmentRequest",
+        "type": "object"
+      },
+      "CreateAssetRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/AssetMode"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "ownership": {
+            "$ref": "#/components/schemas/AssetOwner"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          }
+        },
+        "required": [
+          "name",
+          "mode",
+          "ownership"
+        ],
+        "title": "CreateAssetRequest",
         "type": "object"
       },
       "CreateCostCenterRequest": {
@@ -525,6 +870,66 @@
           "source"
         ],
         "title": "DepositRequest",
+        "type": "object"
+      },
+      "EditAssetRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "ownership": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetOwner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          }
+        },
+        "title": "EditAssetRequest",
         "type": "object"
       },
       "EditMemberRequest": {
@@ -1031,6 +1436,75 @@
           "note"
         ],
         "title": "FixAmountRequest",
+        "type": "object"
+      },
+      "FixEventOut": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "reversal_id": {
+            "title": "Reversal Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "asset_id",
+          "kind",
+          "quantity",
+          "occurred_on",
+          "note",
+          "reversal_id"
+        ],
+        "title": "FixEventOut",
+        "type": "object"
+      },
+      "FixEventRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "quantity",
+          "occurred_on"
+        ],
+        "title": "FixEventRequest",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1703,6 +2177,39 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WhoHasWhatOut": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "integer"
+          },
+          "asset_name": {
+            "title": "Asset Name",
+            "type": "string"
+          },
+          "member_id": {
+            "title": "Member Id",
+            "type": "integer"
+          },
+          "member_name": {
+            "title": "Member Name",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_id",
+          "asset_name",
+          "member_id",
+          "member_name",
+          "quantity"
+        ],
+        "title": "WhoHasWhatOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -1837,6 +2344,412 @@
         "summary": "Post Allocation",
         "tags": [
           "envelopes"
+        ]
+      }
+    },
+    "/api/v1/assets": {
+      "get": {
+        "operationId": "get_assets_api_v1_assets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssetOut"
+                  },
+                  "title": "Response Get Assets Api V1 Assets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Assets",
+        "tags": [
+          "assets"
+        ]
+      },
+      "post": {
+        "operationId": "post_asset_api_v1_assets_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Asset",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/v1/assets/activity": {
+      "get": {
+        "operationId": "get_asset_activity_api_v1_assets_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssetActivityOut"
+                  },
+                  "title": "Response Get Asset Activity Api V1 Assets Activity Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Asset Activity",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/v1/assets/holdings": {
+      "get": {
+        "operationId": "get_asset_holdings_api_v1_assets_holdings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WhoHasWhatOut"
+                  },
+                  "title": "Response Get Asset Holdings Api V1 Assets Holdings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Asset Holdings",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/v1/assets/replacement-queue": {
+      "get": {
+        "operationId": "get_replacement_queue_api_v1_assets_replacement_queue_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssetStateOut"
+                  },
+                  "title": "Response Get Replacement Queue Api V1 Assets Replacement Queue Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Replacement Queue",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/v1/assets/state": {
+      "get": {
+        "operationId": "get_asset_state_api_v1_assets_state_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssetStateOut"
+                  },
+                  "title": "Response Get Asset State Api V1 Assets State Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Asset State",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/v1/assets/{asset_id}/edit": {
+      "post": {
+        "operationId": "post_edit_api_v1_assets__asset_id__edit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditAssetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Edit",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/v1/assets/{asset_id}/events": {
+      "post": {
+        "operationId": "post_event_api_v1_assets__asset_id__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetEventOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Event",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/v1/assets/{asset_id}/events/{event_id}/fix": {
+      "post": {
+        "operationId": "post_fix_event_api_v1_assets__asset_id__events__event_id__fix_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FixEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixEventOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Fix Event",
+        "tags": [
+          "assets"
         ]
       }
     },
