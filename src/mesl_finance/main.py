@@ -80,6 +80,14 @@ from mesl_finance.reconciliation.infrastructure.unit_of_work import SqlReconcili
 from mesl_finance.shared.api.problems import install_error_handlers
 from mesl_finance.shared.infrastructure.database import create_engine
 from mesl_finance.shared.settings import Settings
+from mesl_finance.tenures.api.router import router as tenures_router
+from mesl_finance.tenures.application.close_tenure import CloseTenure
+from mesl_finance.tenures.application.read_snapshots import (
+    ListAssetSnapshots,
+    ListHoldingSnapshots,
+    ListMemberSnapshots,
+)
+from mesl_finance.tenures.infrastructure.unit_of_work import SqlTenureUnitOfWork
 
 API_PREFIX = "/api/v1"
 
@@ -176,6 +184,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.list_unverified_entries = ListUnverifiedEntries(reconciliation_unit_of_work)
     app.state.list_difference_suspects = ListDifferenceSuspects(reconciliation_unit_of_work)
 
+    def tenure_unit_of_work(actor: str) -> SqlTenureUnitOfWork:
+        return SqlTenureUnitOfWork(engine, actor)
+
+    app.state.close_tenure = CloseTenure(tenure_unit_of_work)
+    app.state.list_member_snapshots = ListMemberSnapshots(tenure_unit_of_work)
+    app.state.list_asset_snapshots = ListAssetSnapshots(tenure_unit_of_work)
+    app.state.list_holding_snapshots = ListHoldingSnapshots(tenure_unit_of_work)
+
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(assets_router, prefix=API_PREFIX)
@@ -185,4 +201,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(members_router, prefix=API_PREFIX)
     app.include_router(fees_router, prefix=API_PREFIX)
     app.include_router(reconciliation_router, prefix=API_PREFIX)
+    app.include_router(tenures_router, prefix=API_PREFIX)
     return app
