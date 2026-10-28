@@ -731,3 +731,24 @@ item 7 FAIL until this batch and the ROADMAP tick were written.
 | ID | Date | Fact | Evidence |
 |---|---|---|---|
 | D-114 (proposed) | 2026-10-26 | `docs/openapi.json` at step 7.6: sha256 `29b20da764381d5193bebda88080d44f6d22ca8fdc5fe54e8f69986b6a313e27`, 71,614 bytes, 31 operations, 43 component schemas (supersedes D-098 (1)'s 41,574 bytes / 16 operations / 25 schemas, which stay as the 6.8 snapshot; D-098 is NOT edited). Regenerated with `PYTHONPATH=src uv run python -m mesl_finance.export_openapi`; the working-tree file equals a fresh export BYTE FOR BYTE, `openapi`/`info`/`securitySchemes` and all 16 pre-6.8 paths plus all 25 pre-6.8 schemas are semantically unchanged, and nothing was removed - the 15 new operations and 18 new schemas are exactly the 7.1-7.5 additions. Regeneration stays env-independent (no `.env`, no `MESL_*` variables, no DB connection). Every later API step (8.4, 9.5, 10.3, 12.2) reruns the same command; the "committed file matches the app" assertion remains 12.2's. Gate evidence: `uv run pytest` 560 passed, `uv run ruff check .` "All checks passed!", `uv run ruff format --check .` "217 files already formatted", `uv run pyright` "0 errors, 0 warnings, 0 informations". | independent fresh export + byte comparison, `git diff` inspection and gate runs this session |
+
+## Added 2026-10-28 (fortieth batch, step 8.0 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-115 | 2026-10-28 | Step 8.0 shape: (Q1=a) TEST-ONLY, no `/code`, because the behaviour already exists in `db/schema.sql`; (Q2=a) line 57's unmarked `DELETE FROM allocation_sessions` gets a dedicated `InsufficientPrivilegeError` test and line 107 asserts exactly 3 sessions survive; (Q3=a) every rejected line pins the exact asyncpg class plus its message fragment; (Q4=a) the post-close balances derived from the script are asserted (pool 1760 / Admin 500 / Components 500 / Projects 445 / Events 297 / Research 148) plus the 3-session count; (Q5=a) the blank-note CHECK is matched by the `ledger_transactions_check` prefix, not a guessed suffix. One new file `tests/db/test_allocation_and_sweeps.py`, 28 cases (20 test functions, one parametrized 9 ways), local prefix helpers (`start`, `allocation_prefix`, `event_prefix`, `script_prefix`), coverage table T1-T20. | "The user approved the step brief for: go with your suggestions (if empty, the step briefed earlier in this session)." | ROADMAP 8.0, D-045, D-073, D-099, D-100 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-116 (proposed) | 2026-10-28 | Facts for later sessions. (1) Line 57's `DELETE FROM allocation_sessions` as `labapp` is SQLSTATE 42501 (`InsufficientPrivilegeError`), NOT the append-only trigger's P0001, because the role has INSERT only on that table (`db/schema.sql:1193-1194`); the sessions therefore survive. Line 59's echo says "delete" but the example has no envelope DELETE statement: its three refusal labels map to lines 60-62, and the only DELETE is line 57. (2) Line 90's sweep header with no cost center fails as 23514 `sweep_needs_cc` at INSERT (`db/schema.sql:262`), never reaching the deferred shape trigger. (3) The bad-allocation block (lines 48-56) is 8 x P0001 `RaiseError` plus 1 x 23514 for the blank note; the latter is the unnamed CHECK at `db/schema.sql:259`, whose generated name is matched by the prefix `ledger_transactions_check`. (4) The script's final state after close is pool 1760, Admin 500, Components 500, Projects 445, Events 297, Research 148, `Old idea` 0, with 3 `allocation_sessions` rows and an empty `verify_all()`; the pool figure is 1760 (not the 1660 first estimated in the brief: the reversed sweep is followed by a second sweep). (5) Test mechanics: the fresh template clone supplies ids 1-6; rejected lines replay the script prefix; two wrong-reason fixes were made during `/tests` (the blank-note parametrize row had note/amounts swapped, and the sweep tests first skipped the allocation prefix) with no assertion weakened. (6) Gate evidence: `uv run pytest` 588 passed (560 pre-existing + 28 new), `uv run ruff check .` "All checks passed!", `uv run ruff format --check .` "218 files already formatted", `uv run pyright` "0 errors, 0 warnings, 0 informations". | red/green runs, audit and installed-source reads this session; `db/examples/06_allocation_and_sweeps.sql:57,59,90`; `db/schema.sql:259,262,1193-1194`; `tests/db/test_allocation_and_sweeps.py` |
+
+### Evidence for the step close
+
+Gates this session (final run): `uv run pytest` 588 passed; `uv run ruff check .` "All checks passed!";
+`uv run ruff format --check .` "218 files already formatted"; `uv run pyright` "0 errors, 0 warnings,
+0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL until this batch and the ROADMAP tick were
+written.

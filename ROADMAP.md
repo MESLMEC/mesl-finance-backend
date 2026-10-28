@@ -198,7 +198,9 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 8: Allocation and sweeps
 
-- [ ] **8.0** Port `06_allocation_and_sweeps.sql` to `tests/db/`. needs: 1.4 [P-007]
+- [x] **8.0** Port `06_allocation_and_sweeps.sql` to `tests/db/`. needs: 1.4 [P-007]
+  Notes: TEST-ONLY, 28 cases in `tests/db/test_allocation_and_sweeps.py` (coverage table in its
+  docstring); the example's three odd lines and the close balances are recorded in D-115/D-116.
 - [ ] **8.1** Allocation draft (`allocation_suggestion`, read-only). needs: 5.1, 8.0
 - [ ] **8.2** Confirm allocation (`allocate`, one transaction). needs: 8.1, 6.2
 - [ ] **8.3** Event leftover (`cost_center_summary`) and sweep to the pool (`sweep_leftover`). needs: 5.2, 6.2, 8.0
