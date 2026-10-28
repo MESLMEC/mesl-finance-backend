@@ -72,3 +72,25 @@ class FixEventOut(BaseModel):
     occurred_on: date
     note: str
     reversal_id: int
+
+
+class AssetStateOut(BaseModel):
+    asset_id: int
+    asset_name: str
+    ownership: str
+    mode: str
+    tag: str | None
+    stock: int
+    damaged: int
+    with_members: int
+    lost: int
+    scrapped: int
+    exchanged: int
+
+
+class WhoHasWhatOut(BaseModel):
+    asset_id: int
+    asset_name: str
+    member_id: int
+    member_name: str
+    quantity: int

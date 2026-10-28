@@ -246,7 +246,12 @@ How the app needs are met with ZERO schema changes:
   own column stays NULL, so `asset_event_guard`'s "cannot be reversed" cannot fire there
   (D-128 (2)); the domain refuses only non-int/zero quantities, the sign is the CHECK's
   (:677); `docs/openapi.json` stays 9.5's.
-- [ ] **9.3** Reads: asset state, who-has-what, admin replacement queue. needs: 9.1
+- [x] **9.3** Reads: asset state, who-has-what, admin replacement queue. needs: 9.1
+  Notes: CODE-WITH-TESTS, 11 new cases (2 use-case, 9 API), operation inventory 40 -> 43
+  (D-136/D-137). `GET /api/v1/assets/state`, `/holdings`, `/replacement-queue`, bare arrays,
+  no `as_of` (the views call the functions with the default `infinity`), `with_members`
+  kept, each read in its view's own order with no adapter ORDER BY, reads never commit;
+  `docs/openapi.json` stays 9.5's.
 - [ ] **9.4** Activity numbers for the admin report (`asset_activity`, CSV-ready). needs: 9.1
 - [ ] **9.5** Refresh `docs/openapi.json`. needs: 9.4 [P-003]
 

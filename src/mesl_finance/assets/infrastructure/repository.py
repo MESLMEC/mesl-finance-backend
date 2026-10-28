@@ -3,6 +3,7 @@ from typing import Any
 from mesl_finance.assets.domain.asset import Asset, AssetView
 from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
 from mesl_finance.assets.domain.asset_event_fix import AssetEventFix
+from mesl_finance.assets.domain.asset_reads import AssetStateRow, WhoHasWhatRow
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -197,3 +198,67 @@ class SqlFixEventRepository:
             note=str(original["note"]),
         )
         return replacement_id, reversal_id, view
+
+
+class SqlAssetReadRepository:
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def asset_state(self) -> list[AssetStateRow]:
+        """`asset_overview` (db/schema.sql:844) in its own name order."""
+        result = await self._uow.execute(
+            """
+            SELECT asset_id, asset_name, ownership::text AS ownership,
+                   mode::text AS mode, tag, stock, damaged, with_members,
+                   lost, scrapped, exchanged
+              FROM asset_overview
+            """
+        )
+        return [_state_row(row) for row in result.mappings().all()]
+
+    async def who_has_what(self) -> list[WhoHasWhatRow]:
+        """`who_has_what` (db/schema.sql:845) in its own (member, asset) order."""
+        result = await self._uow.execute(
+            """
+            SELECT asset_id, asset_name, member_id, member_name, quantity
+              FROM who_has_what
+            """
+        )
+        return [
+            WhoHasWhatRow(
+                asset_id=int(row["asset_id"]),
+                asset_name=str(row["asset_name"]),
+                member_id=int(row["member_id"]),
+                member_name=str(row["member_name"]),
+                quantity=int(row["quantity"]),
+            )
+            for row in result.mappings().all()
+        ]
+
+    async def replacement_queue(self) -> list[AssetStateRow]:
+        """`admin_replacement_queue` (db/schema.sql:846-847)."""
+        result = await self._uow.execute(
+            """
+            SELECT asset_id, asset_name, ownership::text AS ownership,
+                   mode::text AS mode, tag, stock, damaged, with_members,
+                   lost, scrapped, exchanged
+              FROM admin_replacement_queue
+            """
+        )
+        return [_state_row(row) for row in result.mappings().all()]
+
+
+def _state_row(row: Any) -> AssetStateRow:  # RowMapping defeats Mapping[str, Any]
+    return AssetStateRow(
+        asset_id=int(row["asset_id"]),
+        asset_name=str(row["asset_name"]),
+        ownership=str(row["ownership"]),
+        mode=str(row["mode"]),
+        tag=row["tag"],
+        stock=int(row["stock"]),
+        damaged=int(row["damaged"]),
+        with_members=int(row["with_members"]),
+        lost=int(row["lost"]),
+        scrapped=int(row["scrapped"]),
+        exchanged=int(row["exchanged"]),
+    )

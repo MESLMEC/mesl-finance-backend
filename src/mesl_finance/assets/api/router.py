@@ -6,18 +6,26 @@ from mesl_finance.assets.api.schemas import (
     AssetEventOut,
     AssetEventRequest,
     AssetOut,
+    AssetStateOut,
     CreateAssetRequest,
     EditAssetRequest,
     FixEventOut,
     FixEventRequest,
+    WhoHasWhatOut,
 )
 from mesl_finance.assets.application.create_asset import CreateAsset, CreateAssetCommand
 from mesl_finance.assets.application.edit_asset import EditAsset, EditAssetCommand
 from mesl_finance.assets.application.fix_event import FixAssetEvent, FixEventCommand
 from mesl_finance.assets.application.list_assets import ListAssets
+from mesl_finance.assets.application.read_asset_state import (
+    ListAssetState,
+    ListReplacementQueue,
+    ListWhoHasWhat,
+)
 from mesl_finance.assets.application.record_event import RecordAssetEvent, RecordEventCommand
 from mesl_finance.assets.domain.asset import AssetView
 from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
+from mesl_finance.assets.domain.asset_reads import AssetStateRow, WhoHasWhatRow
 from mesl_finance.auth.api.dependencies import current_actor
 
 router = APIRouter(tags=["assets"])
@@ -41,6 +49,44 @@ def get_record_asset_event(request: Request) -> RecordAssetEvent:
 
 def get_fix_asset_event(request: Request) -> FixAssetEvent:
     return cast(FixAssetEvent, request.app.state.fix_asset_event)
+
+
+def get_list_asset_state(request: Request) -> ListAssetState:
+    return cast(ListAssetState, request.app.state.list_asset_state)
+
+
+def get_list_who_has_what(request: Request) -> ListWhoHasWhat:
+    return cast(ListWhoHasWhat, request.app.state.list_who_has_what)
+
+
+def get_list_replacement_queue(request: Request) -> ListReplacementQueue:
+    return cast(ListReplacementQueue, request.app.state.list_replacement_queue)
+
+
+def _state_out(row: AssetStateRow) -> AssetStateOut:
+    return AssetStateOut(
+        asset_id=row.asset_id,
+        asset_name=row.asset_name,
+        ownership=row.ownership,
+        mode=row.mode,
+        tag=row.tag,
+        stock=row.stock,
+        damaged=row.damaged,
+        with_members=row.with_members,
+        lost=row.lost,
+        scrapped=row.scrapped,
+        exchanged=row.exchanged,
+    )
+
+
+def _holding_out(row: WhoHasWhatRow) -> WhoHasWhatOut:
+    return WhoHasWhatOut(
+        asset_id=row.asset_id,
+        asset_name=row.asset_name,
+        member_id=row.member_id,
+        member_name=row.member_name,
+        quantity=row.quantity,
+    )
 
 
 def _asset_out(view: AssetView) -> AssetOut:
@@ -181,3 +227,30 @@ async def post_fix_event(
         note=view.note,
         reversal_id=reversal_id,
     )
+
+
+@router.get("/assets/state")
+async def get_asset_state(
+    user: Annotated[str, Depends(current_actor)],
+    list_asset_state: Annotated[ListAssetState, Depends(get_list_asset_state)],
+) -> list[AssetStateOut]:
+    rows = await list_asset_state(actor=user)
+    return [_state_out(row) for row in rows]
+
+
+@router.get("/assets/holdings")
+async def get_asset_holdings(
+    user: Annotated[str, Depends(current_actor)],
+    list_who_has_what: Annotated[ListWhoHasWhat, Depends(get_list_who_has_what)],
+) -> list[WhoHasWhatOut]:
+    rows = await list_who_has_what(actor=user)
+    return [_holding_out(row) for row in rows]
+
+
+@router.get("/assets/replacement-queue")
+async def get_replacement_queue(
+    user: Annotated[str, Depends(current_actor)],
+    list_replacement_queue: Annotated[ListReplacementQueue, Depends(get_list_replacement_queue)],
+) -> list[AssetStateOut]:
+    rows = await list_replacement_queue(actor=user)
+    return [_state_out(row) for row in rows]

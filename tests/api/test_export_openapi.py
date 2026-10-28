@@ -58,6 +58,9 @@ OPENAPI_VERSION = "3.1.0"
 EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("GET", "/api/v1/allocation-context"),
     ("GET", "/api/v1/assets"),
+    ("GET", "/api/v1/assets/holdings"),
+    ("GET", "/api/v1/assets/replacement-queue"),
+    ("GET", "/api/v1/assets/state"),
     ("GET", "/api/v1/cost-centers"),
     ("GET", "/api/v1/cost-centers/{cost_center_id}/summary"),
     ("GET", "/api/v1/dues"),
