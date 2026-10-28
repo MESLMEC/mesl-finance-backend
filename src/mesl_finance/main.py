@@ -69,6 +69,9 @@ from mesl_finance.members.application.list_membership_periods import ListMembers
 from mesl_finance.members.application.record_adjustment import RecordAdjustment
 from mesl_finance.members.application.start_membership import StartMembership
 from mesl_finance.members.infrastructure.unit_of_work import SqlMemberUnitOfWork
+from mesl_finance.reconciliation.api.router import router as reconciliation_router
+from mesl_finance.reconciliation.application.reconcile import Reconcile
+from mesl_finance.reconciliation.infrastructure.unit_of_work import SqlReconciliationUnitOfWork
 from mesl_finance.shared.api.problems import install_error_handlers
 from mesl_finance.shared.infrastructure.database import create_engine
 from mesl_finance.shared.settings import Settings
@@ -160,6 +163,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.list_who_has_what = ListWhoHasWhat(asset_unit_of_work)
     app.state.list_replacement_queue = ListReplacementQueue(asset_unit_of_work)
 
+    def reconciliation_unit_of_work(actor: str) -> SqlReconciliationUnitOfWork:
+        return SqlReconciliationUnitOfWork(engine, actor)
+
+    app.state.reconcile = Reconcile(reconciliation_unit_of_work)
+
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(assets_router, prefix=API_PREFIX)
@@ -168,4 +176,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(cost_centers_router, prefix=API_PREFIX)
     app.include_router(members_router, prefix=API_PREFIX)
     app.include_router(fees_router, prefix=API_PREFIX)
+    app.include_router(reconciliation_router, prefix=API_PREFIX)
     return app

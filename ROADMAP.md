@@ -273,7 +273,14 @@ How the app needs are met with ZERO schema changes:
   and lines 82-84 are 42501 (`labapp` has only SELECT on `reconciliations`, so the privilege
   wall fires before the triggers); `reconcile` defaults `checked_on` to `current_date`, so
   `days_since_last_match` is 0 right after a match (D-146).
-- [ ] **10.1** `reconcile` action (counted total, optional per-envelope counts). needs: 6.2, 10.0
+- [x] **10.1** `reconcile` action (counted total, optional per-envelope counts). needs: 6.2, 10.0
+  Notes: CODE-WITH-TESTS, 14 new cases (2 use-case, 12 API), operation inventory 44 -> 45
+  (D-147/D-148/D-149). `POST /api/v1/reconciliations` takes
+  `{counted_total, note="", counted={"<envelope_id>": int} | null}` and returns 201 with the stored
+  row's six fields; thin app - a negative total is the 23514 CHECK (409), an unknown envelope is
+  P0001 (409), a bad or non-object `counted` is 422 `validation_error` from pydantic. 'no open
+  tenure' is unreachable through the API (`close_tenure` always opens the next tenure), so no
+  test pins it. `docs/openapi.json` stays 10.3's.
 - [ ] **10.2** Reads: reconciliation status, unverified entries, difference suspects. needs: 10.1
 - [ ] **10.3** Refresh `docs/openapi.json`. needs: 10.2 [P-003]
 

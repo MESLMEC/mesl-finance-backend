@@ -96,6 +96,7 @@ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("POST", "/api/v1/members/{member_id}/edit"),
     ("POST", "/api/v1/members/{member_id}/periods/end"),
     ("POST", "/api/v1/members/{member_id}/periods/start"),
+    ("POST", "/api/v1/reconciliations"),
     ("POST", "/api/v1/refunds"),
     ("POST", "/api/v1/shutdown-weeks"),
     ("POST", "/api/v1/sweeps"),
