@@ -214,7 +214,12 @@ How the app needs are met with ZERO schema changes:
   and returns `201 {id, kind, pool_balance}`; the app is thin (strict whole numbers only),
   so zero/negative/non-digit/blank-note/over-allocation/unknown-or-inactive-envelope all
   answer 409 from `allocate`'s own messages. `docs/openapi.json` stays 8.4's.
-- [ ] **8.3** Event leftover (`cost_center_summary`) and sweep to the pool (`sweep_leftover`). needs: 5.2, 6.2, 8.0
+- [x] **8.3** Event leftover (`cost_center_summary`) and sweep to the pool (`sweep_leftover`). needs: 5.2, 6.2, 8.0
+  Notes: CODE-WITH-TESTS, 32 new cases (10 unit, 22 API), operation inventory 33 -> 35
+  (D-122/D-123). `GET /api/v1/cost-centers/{cost_center_id}/summary` returns the view's
+  8 columns and an unknown id is 404 naming it; `POST /api/v1/sweeps` answers
+  `201 {id, kind: sweep, from_balance, pool_balance}` and is a thin app - everything but
+  a blank note (422) reaches `sweep_leftover` as 409. `docs/openapi.json` stays 8.4's.
 - [ ] **8.4** Refresh `docs/openapi.json`. needs: 8.3 [P-003]
 
 ## Phase 9: Assets

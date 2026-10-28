@@ -58,6 +58,7 @@ OPENAPI_VERSION = "3.1.0"
 EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("GET", "/api/v1/allocation-context"),
     ("GET", "/api/v1/cost-centers"),
+    ("GET", "/api/v1/cost-centers/{cost_center_id}/summary"),
     ("GET", "/api/v1/dues"),
     ("GET", "/api/v1/entries"),
     ("GET", "/api/v1/envelopes"),
@@ -88,6 +89,7 @@ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("POST", "/api/v1/members/{member_id}/periods/start"),
     ("POST", "/api/v1/refunds"),
     ("POST", "/api/v1/shutdown-weeks"),
+    ("POST", "/api/v1/sweeps"),
     ("POST", "/api/v1/transfers"),
 ]
 

@@ -12,9 +12,13 @@ from mesl_finance.auth.infrastructure.credentials import Argon2CredentialChecker
 from mesl_finance.auth.infrastructure.tokens import JwtTokenService
 from mesl_finance.cost_centers.api.router import router as cost_centers_router
 from mesl_finance.cost_centers.application.create_cost_center import CreateCostCenter
+from mesl_finance.cost_centers.application.get_cost_center_summary import (
+    GetCostCenterSummary,
+)
 from mesl_finance.cost_centers.application.list_cost_centers import ListCostCenters
 from mesl_finance.cost_centers.application.rename_cost_center import RenameCostCenter
 from mesl_finance.cost_centers.application.set_cost_center_status import SetCostCenterStatus
+from mesl_finance.cost_centers.application.sweep_leftover import SweepLeftover
 from mesl_finance.cost_centers.infrastructure.unit_of_work import SqlCostCenterUnitOfWork
 from mesl_finance.envelopes.api.router import router as envelopes_router
 from mesl_finance.envelopes.application.confirm_allocation import ConfirmAllocation
@@ -106,6 +110,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.list_cost_centers = ListCostCenters(cost_center_unit_of_work)
     app.state.rename_cost_center = RenameCostCenter(cost_center_unit_of_work)
     app.state.set_cost_center_status = SetCostCenterStatus(cost_center_unit_of_work)
+    app.state.sweep_leftover = SweepLeftover(cost_center_unit_of_work)
+    app.state.get_cost_center_summary = GetCostCenterSummary(cost_center_unit_of_work)
 
     def member_unit_of_work(actor: str) -> SqlMemberUnitOfWork:
         return SqlMemberUnitOfWork(engine, actor)
