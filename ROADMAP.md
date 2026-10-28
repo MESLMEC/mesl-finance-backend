@@ -281,7 +281,12 @@ How the app needs are met with ZERO schema changes:
   P0001 (409), a bad or non-object `counted` is 422 `validation_error` from pydantic. 'no open
   tenure' is unreachable through the API (`close_tenure` always opens the next tenure), so no
   test pins it. `docs/openapi.json` stays 10.3's.
-- [ ] **10.2** Reads: reconciliation status, unverified entries, difference suspects. needs: 10.1
+- [x] **10.2** Reads: reconciliation status, unverified entries, difference suspects. needs: 10.1
+  Notes: CODE-WITH-TESTS, 16 new cases (3 use-case, 13 API), operation inventory 45 -> 48
+  (D-150/D-151). Three reads share one `ReconciliationReadRepository` exposed as
+  `.reconciliation_reads` (D-085); `?difference=` + optional `?envelope_id=` are bound CAST
+  parameters to `difference_suspects`; `days_since_last_match` is an integer and NULL before
+  any match. `docs/openapi.json` stays 10.3's.
 - [ ] **10.3** Refresh `docs/openapi.json`. needs: 10.2 [P-003]
 
 ## Phase 11: Tenure handover

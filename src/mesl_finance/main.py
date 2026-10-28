@@ -70,6 +70,11 @@ from mesl_finance.members.application.record_adjustment import RecordAdjustment
 from mesl_finance.members.application.start_membership import StartMembership
 from mesl_finance.members.infrastructure.unit_of_work import SqlMemberUnitOfWork
 from mesl_finance.reconciliation.api.router import router as reconciliation_router
+from mesl_finance.reconciliation.application.read_reconciliation import (
+    GetReconciliationStatus,
+    ListDifferenceSuspects,
+    ListUnverifiedEntries,
+)
 from mesl_finance.reconciliation.application.reconcile import Reconcile
 from mesl_finance.reconciliation.infrastructure.unit_of_work import SqlReconciliationUnitOfWork
 from mesl_finance.shared.api.problems import install_error_handlers
@@ -167,6 +172,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return SqlReconciliationUnitOfWork(engine, actor)
 
     app.state.reconcile = Reconcile(reconciliation_unit_of_work)
+    app.state.get_reconciliation_status = GetReconciliationStatus(reconciliation_unit_of_work)
+    app.state.list_unverified_entries = ListUnverifiedEntries(reconciliation_unit_of_work)
+    app.state.list_difference_suspects = ListDifferenceSuspects(reconciliation_unit_of_work)
 
     install_error_handlers(app)
     app.include_router(auth_router, prefix=API_PREFIX)
