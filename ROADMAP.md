@@ -252,7 +252,12 @@ How the app needs are met with ZERO schema changes:
   no `as_of` (the views call the functions with the default `infinity`), `with_members`
   kept, each read in its view's own order with no adapter ORDER BY, reads never commit;
   `docs/openapi.json` stays 9.5's.
-- [ ] **9.4** Activity numbers for the admin report (`asset_activity`, CSV-ready). needs: 9.1
+- [x] **9.4** Activity numbers for the admin report (`asset_activity`, CSV-ready). needs: 9.1
+  Notes: CODE-WITH-TESTS, 12 new cases (1 use-case, 11 API), operation inventory 43 -> 44
+  (D-139/D-140/D-141). `GET /api/v1/assets/activity?from_date=&to_date=`, JSON rows only -
+  "CSV-ready" is B-22's raw numbers, no CSV endpoint; the function's own six names and its
+  own ORDER BY (name, kind ENUM ORDINAL: `lent` before `damaged`); a reversed window answers
+  `[]`, not 422; `docs/openapi.json` stays 9.5's.
 - [ ] **9.5** Refresh `docs/openapi.json`. needs: 9.4 [P-003]
 
 ## Phase 10: Reconciliation

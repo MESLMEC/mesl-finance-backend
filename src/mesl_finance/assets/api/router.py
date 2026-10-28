@@ -1,8 +1,10 @@
+from datetime import date
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from mesl_finance.assets.api.schemas import (
+    AssetActivityOut,
     AssetEventOut,
     AssetEventRequest,
     AssetOut,
@@ -16,6 +18,7 @@ from mesl_finance.assets.api.schemas import (
 from mesl_finance.assets.application.create_asset import CreateAsset, CreateAssetCommand
 from mesl_finance.assets.application.edit_asset import EditAsset, EditAssetCommand
 from mesl_finance.assets.application.fix_event import FixAssetEvent, FixEventCommand
+from mesl_finance.assets.application.list_asset_activity import ListAssetActivity
 from mesl_finance.assets.application.list_assets import ListAssets
 from mesl_finance.assets.application.read_asset_state import (
     ListAssetState,
@@ -24,6 +27,7 @@ from mesl_finance.assets.application.read_asset_state import (
 )
 from mesl_finance.assets.application.record_event import RecordAssetEvent, RecordEventCommand
 from mesl_finance.assets.domain.asset import AssetView
+from mesl_finance.assets.domain.asset_activity import AssetActivityRow
 from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
 from mesl_finance.assets.domain.asset_reads import AssetStateRow, WhoHasWhatRow
 from mesl_finance.auth.api.dependencies import current_actor
@@ -51,6 +55,10 @@ def get_fix_asset_event(request: Request) -> FixAssetEvent:
     return cast(FixAssetEvent, request.app.state.fix_asset_event)
 
 
+def get_list_asset_activity(request: Request) -> ListAssetActivity:
+    return cast(ListAssetActivity, request.app.state.list_asset_activity)
+
+
 def get_list_asset_state(request: Request) -> ListAssetState:
     return cast(ListAssetState, request.app.state.list_asset_state)
 
@@ -61,6 +69,17 @@ def get_list_who_has_what(request: Request) -> ListWhoHasWhat:
 
 def get_list_replacement_queue(request: Request) -> ListReplacementQueue:
     return cast(ListReplacementQueue, request.app.state.list_replacement_queue)
+
+
+def _activity_out(row: AssetActivityRow) -> AssetActivityOut:
+    return AssetActivityOut(
+        asset_name=row.asset_name,
+        ownership=row.ownership,
+        kind=row.kind,
+        source=row.source,
+        units=row.units,
+        events=row.events,
+    )
 
 
 def _state_out(row: AssetStateRow) -> AssetStateOut:
@@ -254,3 +273,14 @@ async def get_replacement_queue(
 ) -> list[AssetStateOut]:
     rows = await list_replacement_queue(actor=user)
     return [_state_out(row) for row in rows]
+
+
+@router.get("/assets/activity")
+async def get_asset_activity(
+    from_date: date,
+    to_date: date,
+    user: Annotated[str, Depends(current_actor)],
+    list_asset_activity: Annotated[ListAssetActivity, Depends(get_list_asset_activity)],
+) -> list[AssetActivityOut]:
+    rows = await list_asset_activity(from_date, to_date, actor=user)
+    return [_activity_out(row) for row in rows]

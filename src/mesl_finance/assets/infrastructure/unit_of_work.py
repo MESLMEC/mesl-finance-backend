@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from mesl_finance.assets.infrastructure.repository import (
+    SqlAssetActivityRepository,
     SqlAssetReadRepository,
     SqlAssetRepository,
     SqlFixEventRepository,
@@ -14,3 +15,4 @@ class SqlAssetUnitOfWork(SqlUnitOfWork):
         self.assets = SqlAssetRepository(self)
         self.fix_events = SqlFixEventRepository(self)
         self.asset_reads = SqlAssetReadRepository(self)
+        self.asset_activity = SqlAssetActivityRepository(self)

@@ -1,6 +1,8 @@
+from datetime import date
 from typing import Protocol
 
 from mesl_finance.assets.domain.asset import Asset, AssetView
+from mesl_finance.assets.domain.asset_activity import AssetActivityRow
 from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
 from mesl_finance.assets.domain.asset_event_fix import AssetEventFix
 from mesl_finance.assets.domain.asset_reads import AssetStateRow, WhoHasWhatRow
@@ -71,3 +73,16 @@ class AssetReadUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def asset_reads(self) -> AssetReadRepository: ...
+
+
+class AssetActivityRepository(Protocol):
+    async def asset_activity(self, from_date: date, to_date: date) -> list[AssetActivityRow]:
+        """The admin report's rows for one window, in the function's own order."""
+        ...
+
+
+class AssetActivityUnitOfWork(UnitOfWork, Protocol):
+    """The activity read's transaction scope (the D-085 pattern)."""
+
+    @property
+    def asset_activity(self) -> AssetActivityRepository: ...

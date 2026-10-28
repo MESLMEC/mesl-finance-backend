@@ -10,6 +10,7 @@ from mesl_finance.assets.api.router import router as assets_router
 from mesl_finance.assets.application.create_asset import CreateAsset
 from mesl_finance.assets.application.edit_asset import EditAsset
 from mesl_finance.assets.application.fix_event import FixAssetEvent
+from mesl_finance.assets.application.list_asset_activity import ListAssetActivity
 from mesl_finance.assets.application.list_assets import ListAssets
 from mesl_finance.assets.application.read_asset_state import (
     ListAssetState,
@@ -154,6 +155,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.edit_asset = EditAsset(asset_unit_of_work)
     app.state.record_asset_event = RecordAssetEvent(asset_unit_of_work)
     app.state.fix_asset_event = FixAssetEvent(asset_unit_of_work)
+    app.state.list_asset_activity = ListAssetActivity(asset_unit_of_work)
     app.state.list_asset_state = ListAssetState(asset_unit_of_work)
     app.state.list_who_has_what = ListWhoHasWhat(asset_unit_of_work)
     app.state.list_replacement_queue = ListReplacementQueue(asset_unit_of_work)

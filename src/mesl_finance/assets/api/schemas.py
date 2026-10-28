@@ -94,3 +94,12 @@ class WhoHasWhatOut(BaseModel):
     member_id: int
     member_name: str
     quantity: int
+
+
+class AssetActivityOut(BaseModel):
+    asset_name: str
+    ownership: str
+    kind: str
+    source: str | None
+    units: int
+    events: int

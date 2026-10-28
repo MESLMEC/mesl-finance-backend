@@ -1,6 +1,8 @@
+from datetime import date
 from typing import Any
 
 from mesl_finance.assets.domain.asset import Asset, AssetView
+from mesl_finance.assets.domain.asset_activity import AssetActivityRow
 from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
 from mesl_finance.assets.domain.asset_event_fix import AssetEventFix
 from mesl_finance.assets.domain.asset_reads import AssetStateRow, WhoHasWhatRow
@@ -262,3 +264,30 @@ def _state_row(row: Any) -> AssetStateRow:  # RowMapping defeats Mapping[str, An
         scrapped=int(row["scrapped"]),
         exchanged=int(row["exchanged"]),
     )
+
+
+class SqlAssetActivityRepository:
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def asset_activity(self, from_date: date, to_date: date) -> list[AssetActivityRow]:
+        """`asset_activity(p_from, p_to)` (db/schema.sql:849-858), its own order."""
+        result = await self._uow.execute(
+            """
+            SELECT asset_name, ownership::text AS ownership, kind::text AS kind,
+                   source::text AS source, units, events
+              FROM asset_activity(CAST(:from_date AS date), CAST(:to_date AS date))
+            """,
+            {"from_date": from_date, "to_date": to_date},
+        )
+        return [
+            AssetActivityRow(
+                asset_name=str(row["asset_name"]),
+                ownership=str(row["ownership"]),
+                kind=str(row["kind"]),
+                source=None if row["source"] is None else str(row["source"]),
+                units=int(row["units"]),
+                events=int(row["events"]),
+            )
+            for row in result.mappings().all()
+        ]
