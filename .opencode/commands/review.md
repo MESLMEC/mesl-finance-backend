@@ -13,4 +13,5 @@ Check each item and answer PASS or FAIL with file:line evidence:
 6. Any TODO, placeholder, stub, commented-out code, or silent assumption?
 7. Any decision or fact a future session needs that is not yet written in DECISIONS.md or ROADMAP.md?
 8. Run the four gates and report the results.
+9. Bug fix: does a regression test exist that fails without the fix?
 End with one line: PASS or FAIL. Edit nothing.

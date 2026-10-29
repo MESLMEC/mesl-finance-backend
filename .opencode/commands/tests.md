@@ -3,7 +3,7 @@ description: Write ONLY the failing tests for the approved step, then stop for r
 agent: tester
 ---
 The user approved the step brief for: $ARGUMENTS (if empty, the step briefed earlier in this session).
-
+For a bug, the first test reproduces the bug and must fail for exactly the reason the issue describes.
 1. Re-read the roadmap line and the approved brief. Write the tests that were approved, nothing more. Only tests/ may be edited; no production code and no stubs in src/.
 2. Before using any library API in a test, verify it in installed source or official docs (AGENTS.md section 3).
 3. Run the new tests and paste the output.

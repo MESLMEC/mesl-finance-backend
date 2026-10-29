@@ -38,6 +38,8 @@ Mandatory stop triggers:
 | `db/sql/NNN_*.sql`, `alembic/versions/NNN_*.py` | the migration history after 0001: one hand-written payload + one thin revision per approved change | append only: new files; committed migrations never edited |
 | `db/examples/` | the database's acceptance spec, ported into `tests/` just in time | never edited |
 
+ROADMAP.md is history now. In this repo "step" means the current work item: a roadmap step OR an issue.
+Live changes follow MAINTENANCE.md. The issue tracker holds issues; the repo holds only decisions, rules and tests.
 Authority when sources conflict (highest first): the user's words in this session; confirmed
 DECISIONS.md entries; the migration chain (`db/schema.sql` is its 0001 payload; `db/sql/` and
 `alembic/versions/` are its history) and db/examples; ticked BUSINESS.md lines; ROADMAP.md; this
