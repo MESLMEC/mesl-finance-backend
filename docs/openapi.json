@@ -445,6 +445,61 @@
         "title": "AssetOwner",
         "type": "string"
       },
+      "AssetSnapshotOut": {
+        "description": "One row from `tenure_asset_snapshots` (db/schema.sql:874-881).",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "integer"
+          },
+          "damaged": {
+            "title": "Damaged",
+            "type": "integer"
+          },
+          "exchanged": {
+            "title": "Exchanged",
+            "type": "integer"
+          },
+          "held": {
+            "title": "Held",
+            "type": "integer"
+          },
+          "lost": {
+            "title": "Lost",
+            "type": "integer"
+          },
+          "scrapped": {
+            "title": "Scrapped",
+            "type": "integer"
+          },
+          "stock": {
+            "title": "Stock",
+            "type": "integer"
+          },
+          "tenure_id": {
+            "title": "Tenure Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tenure_id",
+          "asset_id",
+          "as_of",
+          "stock",
+          "damaged",
+          "held",
+          "lost",
+          "scrapped",
+          "exchanged"
+        ],
+        "title": "AssetSnapshotOut",
+        "type": "object"
+      },
       "AssetStateOut": {
         "properties": {
           "asset_id": {
@@ -513,6 +568,52 @@
           "exchanged"
         ],
         "title": "AssetStateOut",
+        "type": "object"
+      },
+      "CloseTenureOut": {
+        "description": "The new tenure, read back from the stored row.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opened_on": {
+            "format": "date",
+            "title": "Opened On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "opened_on"
+        ],
+        "title": "CloseTenureOut",
+        "type": "object"
+      },
+      "CloseTenureRequest": {
+        "additionalProperties": false,
+        "description": "What the treasurer enters to hand over to the next committee.",
+        "properties": {
+          "close_on": {
+            "format": "date",
+            "title": "Close On",
+            "type": "string"
+          },
+          "next_name": {
+            "title": "Next Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "close_on",
+          "next_name"
+        ],
+        "title": "CloseTenureRequest",
         "type": "object"
       },
       "ConfirmAllocationRequest": {
@@ -1560,6 +1661,35 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HoldingSnapshotOut": {
+        "description": "One row from `tenure_holding_snapshots` (db/schema.sql:882-888).",
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "integer"
+          },
+          "member_id": {
+            "title": "Member Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "tenure_id": {
+            "title": "Tenure Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tenure_id",
+          "asset_id",
+          "member_id",
+          "quantity"
+        ],
+        "title": "HoldingSnapshotOut",
+        "type": "object"
+      },
       "IncomeSource": {
         "description": "The `income_source` enum (db/schema.sql:241).",
         "enum": [
@@ -1687,6 +1817,56 @@
           "note"
         ],
         "title": "MemberOut",
+        "type": "object"
+      },
+      "MemberSnapshotOut": {
+        "description": "One row from `tenure_member_snapshots` (db/schema.sql:863-872).",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "balance": {
+            "title": "Balance",
+            "type": "integer"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "member_id": {
+            "title": "Member Id",
+            "type": "integer"
+          },
+          "owed": {
+            "title": "Owed",
+            "type": "integer"
+          },
+          "tenure_id": {
+            "title": "Tenure Id",
+            "type": "integer"
+          },
+          "weeks_overdue": {
+            "title": "Weeks Overdue",
+            "type": "integer"
+          },
+          "weeks_owed": {
+            "title": "Weeks Owed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tenure_id",
+          "member_id",
+          "as_of",
+          "weeks_owed",
+          "owed",
+          "credits",
+          "balance",
+          "weeks_overdue"
+        ],
+        "title": "MemberSnapshotOut",
         "type": "object"
       },
       "MembershipPeriodOut": {
@@ -4054,6 +4234,36 @@
         ]
       }
     },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Health Api V1 Health Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/api/v1/members": {
       "get": {
         "operationId": "get_members_api_v1_members_get",
@@ -4691,6 +4901,205 @@
         "summary": "Post Sweep",
         "tags": [
           "cost-centers"
+        ]
+      }
+    },
+    "/api/v1/tenures/close": {
+      "post": {
+        "operationId": "post_close_tenure_api_v1_tenures_close_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseTenureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseTenureOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Close Tenure",
+        "tags": [
+          "tenures"
+        ]
+      }
+    },
+    "/api/v1/tenures/{tenure_id}/asset-snapshots": {
+      "get": {
+        "operationId": "get_asset_snapshots_api_v1_tenures__tenure_id__asset_snapshots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenure_id",
+            "required": true,
+            "schema": {
+              "title": "Tenure Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssetSnapshotOut"
+                  },
+                  "title": "Response Get Asset Snapshots Api V1 Tenures  Tenure Id  Asset Snapshots Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Asset Snapshots",
+        "tags": [
+          "tenures"
+        ]
+      }
+    },
+    "/api/v1/tenures/{tenure_id}/holding-snapshots": {
+      "get": {
+        "operationId": "get_holding_snapshots_api_v1_tenures__tenure_id__holding_snapshots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenure_id",
+            "required": true,
+            "schema": {
+              "title": "Tenure Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HoldingSnapshotOut"
+                  },
+                  "title": "Response Get Holding Snapshots Api V1 Tenures  Tenure Id  Holding Snapshots Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Holding Snapshots",
+        "tags": [
+          "tenures"
+        ]
+      }
+    },
+    "/api/v1/tenures/{tenure_id}/member-snapshots": {
+      "get": {
+        "operationId": "get_member_snapshots_api_v1_tenures__tenure_id__member_snapshots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenure_id",
+            "required": true,
+            "schema": {
+              "title": "Tenure Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberSnapshotOut"
+                  },
+                  "title": "Response Get Member Snapshots Api V1 Tenures  Tenure Id  Member Snapshots Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Member Snapshots",
+        "tags": [
+          "tenures"
         ]
       }
     },

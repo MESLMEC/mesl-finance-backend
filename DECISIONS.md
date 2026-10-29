@@ -1042,3 +1042,19 @@ Gates this session (closing run): `uv run pytest` 934 passed (930 pre-existing +
 ### Evidence for the step close
 
 Gates this session (closing run): `uv run pytest` 942 passed (934 pre-existing + 8 new); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "333 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL was closed by this batch and the ROADMAP tick.
+
+
+## Added 2026-10-29 (fifty-eighth batch, step 12.2 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-160 | 2026-10-29 | Step 12.2 shape: every question took the brief's labelled suggestion (generic-approval pattern, D-062 et seq.): (Q1=a) byte comparison, not parsed equality - the file is the generator's byte-stable output, so any byte drift is a contract change; (Q2=a) both freshness tests appended to `tests/api/test_export_openapi.py`; (Q3=a) CODE-WITH-TESTS with the artifact regeneration as `/code`; (Q4=a) the stale `[P-003]` marker on the ROADMAP 12.2 line is left as is (the 10.3 precedent). | "The user approved the step brief for:  (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 12.2, D-096, D-153, D-157 |
+| D-161 | 2026-10-29 | The step 12.2 tests are approved as written, after the red run showed both failing for the RIGHT reason (the committed file was still 10.3's 48-op snapshot; the fresh export passed the same file's pre-existing tests). | "The user reviewed and approved the tests for:  (if empty, the step in this session)." | D-160 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-162 (proposed) | 2026-10-29 | `docs/openapi.json` at step 12.2 (FINAL): sha256 `4903e89aca5d3b9167536b6fb2e00f11a1c35c3db843bf1764b763e29a70180b`, 127,981 bytes, 53 operations, 74 component schemas (supersedes D-153's 10.3 snapshot `d9cde7d0...` / 117,349 bytes / 48 ops / 69 schemas; D-153 is NOT edited). The diff vs 10.3 is 409 insertions / 0 deletions: exactly 5 operations (`GET /api/v1/health` + the four 11.1 tenure routes) and 5 schemas (`AssetSnapshotOut`, `CloseTenureOut`, `CloseTenureRequest`, `HoldingSnapshotOut`, `MemberSnapshotOut`); nothing removed or changed; `openapi` 3.1.0 / `info` / `securitySchemes` unchanged; a second fresh export is byte-identical and the file ends with exactly one newline; regeneration stays env-independent; the document still carries NO problem-JSON bodies (0 "problem" refs, 42 `HTTPValidationError`, D-098 (3)). STANDING RULE for every future route change: extend `EXPECTED_OPERATIONS`, then rerun `PYTHONPATH=src uv run python -m mesl_finance.export_openapi` BEFORE committing - from now on `test_the_committed_openapi_json_matches_a_fresh_export` fails the suite the moment the committed file drifts. The freshness test locates the committed file via `Path(__file__).resolve().parents[2]` (the `tests/test_schema_hash.py` pattern). Gates this session: `uv run pytest` 944 passed (942 pre-existing + 2 new), ruff check/format clean (333 files), pyright 0 errors. | git diff (409+/0-), sha256sum before/after, structured-diff probe, second byte-identical export and gate runs 2026-10-29 |

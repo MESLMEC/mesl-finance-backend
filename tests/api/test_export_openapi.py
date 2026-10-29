@@ -5,8 +5,8 @@ answered by the generic approval, so the brief's labelled suggestions stand (sam
 as D-062/D-064/D-066/D-070/D-076/D-079/D-082/D-086/D-088/D-090/D-093):
 - Q1=a P-003 confirmed in its narrowed form: only the generated `docs/openapi.json`;
   no handwritten `docs/api-contract.md`, as ROADMAP 6.8 says.
-- Q2=a CODE-WITH-TESTS with the three tests below; the check that the COMMITTED file
-  still matches a fresh export is ROADMAP 12.2's job and is not written here.
+- Q2=a CODE-WITH-TESTS with the three tests below; ROADMAP 12.2 later added the two
+  committed-file freshness tests at the bottom of this file.
 - Q3=a the generator is `src/mesl_finance/export_openapi.py`, run as
   `PYTHONPATH=src uv run python -m mesl_finance.export_openapi`.
 - Q4=a the generator builds documented schema-only placeholder settings and opens no
@@ -175,3 +175,29 @@ def test_export_creates_the_destination_directory(tmp_path: Path) -> None:
     _export_openapi()(destination)
 
     assert destination.is_file()
+
+
+COMMITTED_DOCUMENT = Path(__file__).resolve().parents[2] / "docs" / "openapi.json"
+
+
+def test_the_committed_openapi_json_matches_a_fresh_export(tmp_path: Path) -> None:
+    """ROADMAP 12.2: docs/openapi.json must still BE what the running app exports.
+
+    Byte comparison, not parsed equality: the file is defined (6.8, Q5=a) as the
+    generator's byte-stable output with sorted keys and two-space indent, so any
+    byte difference is a contract change that someone must regenerate by hand.
+    """
+    fresh = tmp_path / "fresh.json"
+
+    _export_openapi()(fresh)
+
+    assert COMMITTED_DOCUMENT.read_bytes() == fresh.read_bytes()
+
+
+def test_the_committed_document_carries_every_current_operation() -> None:
+    """ROADMAP 12.2: the committed file documents the operations of the running app."""
+    document = json.loads(COMMITTED_DOCUMENT.read_text(encoding="utf-8"))
+
+    assert sorted(_operations(document)) == EXPECTED_OPERATIONS
+    assert document["openapi"] == OPENAPI_VERSION
+    assert document["info"] == {"title": TITLE, "version": VERSION}

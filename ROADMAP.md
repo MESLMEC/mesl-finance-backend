@@ -307,7 +307,12 @@ How the app needs are met with ZERO schema changes:
   `GET /api/v1/health` answers 200 `[]` / 503 with the same bare array, `verify_all()` runs
   as `labapp` through the default PUBLIC EXECUTE, and the generated OpenAPI (12.2's) will
   document only the 200 `array[string]` - the 503 is not in it.
-- [ ] **12.2** Final generated `docs/openapi.json` plus a test that it matches the running app. needs: 11.2, 12.1 [P-003]
+- [x] **12.2** Final generated `docs/openapi.json` plus a test that it matches the running app. needs: 11.2, 12.1 [P-003]
+  Notes: the two freshness tests (byte-equality to a fresh export + the operation inventory) live at
+  the bottom of tests/api/test_export_openapi.py; final snapshot sha 4903e89a..., 127,981 bytes,
+  53 operations / 74 schemas (D-162). Every later route change must rerun the generator - the
+  byte test goes red the moment the committed file drifts - and extend EXPECTED_OPERATIONS.
+  The [P-003] marker is stale (resolved by D-096; left as is, D-160 Q4=a).
 
 ---
 
