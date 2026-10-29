@@ -61,6 +61,12 @@ def _run_migrations(settings: Settings) -> None:
 
 async def _set_role_password(admin: asyncpg.Connection, role: str, password: str) -> None:
     """ALTER ROLE ... PASSWORD ref a constant, so PostgreSQL does the quoting: %I/%L."""
+    role_exists = await admin.fetchval(
+        "SELECT 1 FROM pg_roles WHERE rolname = $1", role
+    )
+    if not role_exists:
+        print(f"Role '{role}' not found in pg_roles (skipping ALTER ROLE).")
+        return
     statement = await admin.fetchval(
         "SELECT format('ALTER ROLE %I PASSWORD %L', $1::text, $2::text)", role, password
     )

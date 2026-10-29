@@ -13,6 +13,7 @@ from mesl_finance.ledger.api.schemas import (
     FixAmountCreated,
     FixAmountRequest,
     LabelEditRequest,
+    LedgerLineOut,
     RefundCreated,
     RefundRequest,
     TransferCreated,
@@ -176,3 +177,22 @@ async def get_entries(
 ) -> list[EntryOut]:
     views = await list_entries(ListEntriesQuery(tenure_id=tenure_id), actor=user)
     return [_entry_out(view) for view in views]
+
+
+@router.get("/ledger-lines")
+async def get_ledger_lines(
+    user: Annotated[str, Depends(current_actor)],
+    list_entries: Annotated[ListEntries, Depends(get_list_entries)],
+    tenure_id: int | None = None,
+) -> list[LedgerLineOut]:
+    views = await list_entries.list_lines(tenure_id=tenure_id, actor=user)
+    return [
+        LedgerLineOut(
+            id=v.id,
+            transaction_id=v.transaction_id,
+            envelope_id=v.envelope_id,
+            amount=v.amount,
+        )
+        for v in views
+    ]
+

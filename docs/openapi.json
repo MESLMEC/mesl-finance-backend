@@ -1765,6 +1765,34 @@
         "title": "LabelEditRequest",
         "type": "object"
       },
+      "LedgerLineOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "integer"
+          },
+          "envelope_id": {
+            "title": "Envelope Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "transaction_id": {
+            "title": "Transaction Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_id",
+          "envelope_id",
+          "amount"
+        ],
+        "title": "LedgerLineOut",
+        "type": "object"
+      },
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2405,6 +2433,66 @@
           "note"
         ],
         "title": "SweepRequest",
+        "type": "object"
+      },
+      "TenureOut": {
+        "description": "A tenure row, including open/closed status.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "closed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed On"
+          },
+          "closing_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Checksum"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opened_on": {
+            "format": "date",
+            "title": "Opened On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "opened_on"
+        ],
+        "title": "TenureOut",
         "type": "object"
       },
       "TokenResponse": {
@@ -4264,6 +4352,64 @@
         ]
       }
     },
+    "/api/v1/ledger-lines": {
+      "get": {
+        "operationId": "get_ledger_lines_api_v1_ledger_lines_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenure_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenure Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LedgerLineOut"
+                  },
+                  "title": "Response Get Ledger Lines Api V1 Ledger Lines Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Ledger Lines",
+        "tags": [
+          "ledger"
+        ]
+      }
+    },
     "/api/v1/members": {
       "get": {
         "operationId": "get_members_api_v1_members_get",
@@ -4904,6 +5050,36 @@
         ]
       }
     },
+    "/api/v1/tenures": {
+      "get": {
+        "operationId": "get_tenures_view_api_v1_tenures_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenureOut"
+                  },
+                  "title": "Response Get Tenures View Api V1 Tenures Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Tenures View",
+        "tags": [
+          "tenures"
+        ]
+      }
+    },
     "/api/v1/tenures/close": {
       "post": {
         "operationId": "post_close_tenure_api_v1_tenures_close_post",
@@ -4945,6 +5121,32 @@
           }
         ],
         "summary": "Post Close Tenure",
+        "tags": [
+          "tenures"
+        ]
+      }
+    },
+    "/api/v1/tenures/open": {
+      "get": {
+        "operationId": "get_open_tenure_view_api_v1_tenures_open_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenureOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Open Tenure View",
         "tags": [
           "tenures"
         ]

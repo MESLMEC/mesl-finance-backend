@@ -35,3 +35,14 @@ class EntryView:
     member_id: int | None
     source: IncomeSource | None
     corrected_from: int | None
+
+
+@dataclass(frozen=True)
+class LedgerLineView:
+    """One row of ledger_lines."""
+
+    id: int
+    transaction_id: int
+    envelope_id: int
+    amount: int
+

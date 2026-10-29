@@ -27,6 +27,14 @@ class TenureRepository(Protocol):
         """Call ``close_tenure`` and return the new tenure row."""
         ...
 
+    async def get_open(self) -> TenureView | None:
+        """Return the currently open tenure, or None if no tenure is open."""
+        ...
+
+    async def list_all(self) -> list[TenureView]:
+        """Return all tenures ordered by id."""
+        ...
+
 
 class TenureUnitOfWork(UnitOfWork, Protocol):
     """One transaction scope, exposing the tenure repository as ``.tenures``."""

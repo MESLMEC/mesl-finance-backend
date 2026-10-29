@@ -2,7 +2,7 @@ from typing import Any
 
 from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.entry import EntryKind, IncomeSource
-from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
+from mesl_finance.ledger.domain.entry_list import EntryView, LedgerLineView, ListEntriesQuery
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
@@ -414,3 +414,29 @@ class SqlLedgerRepository:
             )
             for row in rows
         ]
+
+    async def list_lines(self, tenure_id: int | None = None) -> list[LedgerLineView]:
+        """All transaction lines, ordered by transaction and line id."""
+        rows = (
+            await self._uow.execute(
+                """
+                SELECT l.id, l.transaction_id, l.envelope_id, l.amount
+                  FROM ledger_lines l
+                  JOIN ledger_transactions x ON x.id = l.transaction_id
+                 WHERE CAST(:tenure_id AS bigint) IS NULL
+                    OR x.tenure_id = CAST(:tenure_id AS bigint)
+                 ORDER BY l.transaction_id, l.id
+                """,
+                {"tenure_id": tenure_id},
+            )
+        ).mappings().all()
+        return [
+            LedgerLineView(
+                id=int(row["id"]),
+                transaction_id=int(row["transaction_id"]),
+                envelope_id=int(row["envelope_id"]),
+                amount=int(row["amount"]),
+            )
+            for row in rows
+        ]
+

@@ -13,12 +13,17 @@ from mesl_finance.tenures.api.schemas import (
     CloseTenureRequest,
     HoldingSnapshotOut,
     MemberSnapshotOut,
+    TenureOut,
 )
 from mesl_finance.tenures.application.close_tenure import CloseTenure, CloseTenureCommand
 from mesl_finance.tenures.application.read_snapshots import (
     ListAssetSnapshots,
     ListHoldingSnapshots,
     ListMemberSnapshots,
+)
+from mesl_finance.tenures.application.read_tenures import (
+    GetOpenTenure,
+    ListTenures,
 )
 from mesl_finance.tenures.domain.snapshots import (
     AssetSnapshotView,
@@ -32,6 +37,14 @@ router = APIRouter(tags=["tenures"])
 
 def get_close_tenure(request: Request) -> CloseTenure:
     return cast(CloseTenure, request.app.state.close_tenure)
+
+
+def get_open_tenure(request: Request) -> GetOpenTenure:
+    return cast(GetOpenTenure, request.app.state.get_open_tenure)
+
+
+def get_list_tenures(request: Request) -> ListTenures:
+    return cast(ListTenures, request.app.state.list_tenures)
 
 
 def get_list_member_snapshots(request: Request) -> ListMemberSnapshots:
@@ -51,6 +64,17 @@ def _close_out(view: TenureView) -> CloseTenureOut:
         id=view.id,
         name=view.name,
         opened_on=view.opened_on,
+    )
+
+
+def _tenure_out(view: TenureView) -> TenureOut:
+    return TenureOut(
+        id=view.id,
+        name=view.name,
+        opened_on=view.opened_on,
+        closed_on=view.closed_on,
+        closed_at=view.closed_at,
+        closing_checksum=view.closing_checksum,
     )
 
 
@@ -102,6 +126,26 @@ async def post_close_tenure(
     )
     view = await close_tenure(command, actor=user)
     return _close_out(view)
+
+
+@router.get("/tenures/open")
+async def get_open_tenure_view(
+    user: Annotated[str, Depends(current_actor)],
+    get_open: Annotated[GetOpenTenure, Depends(get_open_tenure)],
+) -> TenureOut:
+    view = await get_open(actor=user)
+    if view is None:
+        raise HTTPException(status_code=404, detail="no open tenure")
+    return _tenure_out(view)
+
+
+@router.get("/tenures")
+async def get_tenures_view(
+    user: Annotated[str, Depends(current_actor)],
+    list_all: Annotated[ListTenures, Depends(get_list_tenures)],
+) -> list[TenureOut]:
+    views = await list_all(actor=user)
+    return [_tenure_out(v) for v in views]
 
 
 @router.get("/tenures/{tenure_id}/member-snapshots")

@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 from mesl_finance.ledger.application.ports import EntryListUnitOfWork
-from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
+from mesl_finance.ledger.domain.entry_list import EntryView, LedgerLineView, ListEntriesQuery
 
 
 class ListEntries:
@@ -17,3 +17,8 @@ class ListEntries:
     async def __call__(self, query: ListEntriesQuery, actor: str) -> list[EntryView]:
         async with self._unit_of_work(actor) as uow:
             return await uow.ledger.list_entries(query)
+
+    async def list_lines(self, tenure_id: int | None, actor: str) -> list[LedgerLineView]:
+        async with self._unit_of_work(actor) as uow:
+            return await uow.ledger.list_lines(tenure_id)
+

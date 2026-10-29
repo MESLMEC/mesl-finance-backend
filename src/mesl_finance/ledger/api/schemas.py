@@ -128,3 +128,11 @@ class EntryOut(BaseModel):
     member_id: int | None
     source: IncomeSource | None
     corrected_from: int | None
+
+
+class LedgerLineOut(BaseModel):
+    id: int
+    transaction_id: int
+    envelope_id: int
+    amount: int
+

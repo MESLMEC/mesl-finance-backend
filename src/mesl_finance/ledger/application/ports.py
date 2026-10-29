@@ -2,7 +2,7 @@ from typing import Protocol
 
 from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.entry import EntryKind
-from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
+from mesl_finance.ledger.domain.entry_list import EntryView, LedgerLineView, ListEntriesQuery
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
@@ -112,6 +112,10 @@ class EntryListRepository(Protocol):
 
     async def list_entries(self, query: ListEntriesQuery) -> list[EntryView]:
         """The ``entries_current`` rows, newest id last (optionally one tenure)."""
+        ...
+
+    async def list_lines(self, tenure_id: int | None = None) -> list[LedgerLineView]:
+        """The ``ledger_lines`` rows, optionally filtered by tenure."""
         ...
 
 
