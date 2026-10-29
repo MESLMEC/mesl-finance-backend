@@ -1024,3 +1024,21 @@ ROADMAP tick.
 ### Evidence for the step close
 
 Gates this session (closing run): `uv run pytest` 934 passed (930 pre-existing + 4 new); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "317 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL was closed by this batch and the ROADMAP tick.
+
+## Added 2026-10-29 (fifty-seventh batch, step 12.1 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-158 | 2026-10-29 | Step 12.1 shape: every question took the brief's labelled suggestion (the D-062/D-064/D-066/D-070/D-076/D-079/D-082/D-086/D-088/D-090/D-093/D-096/D-101/D-104/D-106/D-109/D-111/D-117/D-120/D-122/D-129/D-133/D-136/D-139/D-144/D-147/D-150/D-154 pattern): (Q1=a) `GET /api/v1/health`, on a `health` router mounted under `API_PREFIX`; (Q2=a) the bearer JWT is required like every other read, so `verify_all()`'s money/tenure/member detail is never public; (Q3=a) the body is a bare JSON array of problem strings, `[]` = healthy; (Q4=a) 200 when the report is empty, 503 with the SAME body shape when it has problems; (Q5=a) a new `health` feature package (domain/application/infrastructure/api) with its own port pair (`HealthRepository.problems()` exposed as `HealthUnitOfWork.health`, D-085), no `api/schemas.py` because the body is `list[str]`; (Q6=a) a normal documented route, operation inventory 52 -> 53; (Q7=a) five unit tests on a fake port plus three API tests, one of them a real tamper. 8 new cases (5 unit, 3 API); `docs/openapi.json` stays 12.2's (D-157). | "The user approved the step brief for: go (if empty, the step briefed earlier in this session)." then "The user reviewed and approved the tests for:  (if empty, the step in this session)." | ROADMAP 12.1, D-006, D-085, D-093, D-096, D-157 |
+
+### Discovered facts (proposed; verified by tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-159 (proposed) | 2026-10-29 | Facts for 12.2 and later. (1) `verify_all()` (db/schema.sql:1180-1183) is invoker-rights (NOT SECURITY DEFINER) and is not REVOKEd, so `labapp` runs it through the default PUBLIC EXECUTE plus `GRANT SELECT ON ALL TABLES` (:1191); `GET /api/v1/health` proves it live as the app role. (2) A MATCHED `reconciliations` row cannot be bumped by the health test's tamper: `CHECK (difference = counted_total - system_total)` and `CHECK (NOT matched OR difference = 0)` (:1030-1031), so the tamper must start from a MISMATCH (counted != system); the first `/code` seed reconciled a match and hit `reconciliations_check1`, then was corrected to a mismatch (the same seed tests/db/test_reconciliation.py:537-553 uses). (3) The route uses `response_model=list[str]` with a `JSONResponse` return, so the GENERATED OpenAPI documents only the 200 `array[string]`; the 503 (the same bare array, no wrapper) is NOT in the document, because FastAPI passes a `Response` instance through unvalidated (fastapi/routing.py:750-753) - consistent with D-098 (3). (4) The slice needs no `api/schemas.py`: `HealthReport` (`health/domain/health.py`) holds `problems: tuple[str, ...]` and answers `healthy`, and the router serialises `list(report.problems)`; `CheckHealth` opens ONE transaction, passes the actor and never commits (the 7.5 Q9=a pattern). (5) Gate evidence: `uv run pytest` 942 passed, `uv run ruff check .` "All checks passed!", `uv run ruff format --check .` "333 files already formatted", `uv run pyright` "0 errors, 0 warnings, 0 informations". | gates, API tests and audit this session; db/schema.sql:1018-1040,1180-1183,1191; fastapi/routing.py:750-753; fastapi/responses.py; sqlalchemy/engine/result.py:715,725,1372 |
+
+### Evidence for the step close
+
+Gates this session (closing run): `uv run pytest` 942 passed (934 pre-existing + 8 new); `uv run ruff check .` "All checks passed!"; `uv run ruff format --check .` "333 files already formatted"; `uv run pyright` "0 errors, 0 warnings, 0 informations". Audit: items 1-6 and 8 PASS; item 7 FAIL was closed by this batch and the ROADMAP tick.

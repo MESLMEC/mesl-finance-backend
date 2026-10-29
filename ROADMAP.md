@@ -302,7 +302,11 @@ How the app needs are met with ZERO schema changes:
 
 ## Phase 12: Contract
 
-- [ ] **12.1** `verify_all` health endpoint. needs: 4.3, 1.4
+- [x] **12.1** `verify_all` health endpoint. needs: 4.3, 1.4
+  Notes: CODE-WITH-TESTS, 8 new cases (5 unit, 3 API), operation inventory 52 -> 53;
+  `GET /api/v1/health` answers 200 `[]` / 503 with the same bare array, `verify_all()` runs
+  as `labapp` through the default PUBLIC EXECUTE, and the generated OpenAPI (12.2's) will
+  document only the 200 `array[string]` - the 503 is not in it.
 - [ ] **12.2** Final generated `docs/openapi.json` plus a test that it matches the running app. needs: 11.2, 12.1 [P-003]
 
 ---

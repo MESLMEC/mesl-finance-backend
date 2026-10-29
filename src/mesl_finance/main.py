@@ -50,6 +50,9 @@ from mesl_finance.fees.application.list_fee_rates import ListFeeRates
 from mesl_finance.fees.application.list_shutdown_events import ListShutdownEvents
 from mesl_finance.fees.application.set_shutdown import SetShutdown
 from mesl_finance.fees.infrastructure.unit_of_work import SqlFeeUnitOfWork
+from mesl_finance.health.api.router import router as health_router
+from mesl_finance.health.application.check_health import CheckHealth
+from mesl_finance.health.infrastructure.unit_of_work import SqlHealthUnitOfWork
 from mesl_finance.ledger.api.router import router as ledger_router
 from mesl_finance.ledger.application.edit_labels import EditLabels
 from mesl_finance.ledger.application.fix_amount import FixAmount
@@ -163,6 +166,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.set_shutdown = SetShutdown(fee_unit_of_work)
     app.state.list_shutdown_events = ListShutdownEvents(fee_unit_of_work)
 
+    def health_unit_of_work(actor: str) -> SqlHealthUnitOfWork:
+        return SqlHealthUnitOfWork(engine, actor)
+
+    app.state.check_health = CheckHealth(health_unit_of_work)
+
     def asset_unit_of_work(actor: str) -> SqlAssetUnitOfWork:
         return SqlAssetUnitOfWork(engine, actor)
 
@@ -200,6 +208,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(cost_centers_router, prefix=API_PREFIX)
     app.include_router(members_router, prefix=API_PREFIX)
     app.include_router(fees_router, prefix=API_PREFIX)
+    app.include_router(health_router, prefix=API_PREFIX)
     app.include_router(reconciliation_router, prefix=API_PREFIX)
     app.include_router(tenures_router, prefix=API_PREFIX)
     return app
