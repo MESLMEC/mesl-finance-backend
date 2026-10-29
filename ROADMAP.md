@@ -297,7 +297,8 @@ How the app needs are met with ZERO schema changes:
 
 - [x] **11.1** Close tenure action (`close_tenure`) and the snapshot reads (member, asset, holding). needs: 7.5, 9.3, 10.1
   Notes: CODE-WITH-TESTS, 25 new cases (4 unit, 21 API), inventory 48 -> 52; `POST /api/v1/tenures/close` answers 201 {id,name,opened_on} for the NEXT tenure, the three snapshot reads return the raw stored columns in primary-key order (unknown tenure 404, empty one []), and no translator rule was needed (P0001 -> 409 rule_violation). 11.2 must remember `close_tenure` opens the next tenure on close_on + 1 and writes the carry-over `opening` only when the closing tenure has ledger lines (db/schema.sql:925-936).
-- [ ] **11.2** Carry-over opening and arrears-across-tenure scenarios through the API. needs: 11.1
+- [x] **11.2** Carry-over opening and arrears-across-tenure scenarios through the API. needs: 11.1
+  Notes: TEST-ONLY, 4 API scenario tests in `tests/tenures/api/test_handover_scenarios_api.py`; the carry-over `opening` is pinned by fields (not amounts) and an empty tenure writes none; no route added, so the OpenAPI inventory stays 52 for 12.2's refresh.
 
 ## Phase 12: Contract
 
