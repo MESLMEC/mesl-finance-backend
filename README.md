@@ -6,9 +6,8 @@ FastAPI + PostgreSQL. PostgreSQL owns the business rules; the app calls the righ
 transaction and translates server errors into typed domain errors (RFC 9457 problem JSON). Money is
 whole-BDT `int` everywhere — never floats.
 
-Status: all roadmap phases (Phase 0–12) are complete. Remaining backlog items that are not yet
-confirmed live in [`ROADMAP.md`](ROADMAP.md#backlog-unconfirmed-the-user-said-maybe-not-part-of-any-step-until-confirmed).
-A frontend is built in parallel by another team; this repo is backend only, with no CI.
+Status: all roadmap phases (Phase 0–12) are complete; [`ROADMAP.md`](ROADMAP.md) is now history.
+Changes are issue-driven (see [Making changes](#making-changes)). Backlog items that are not yet confirmed stay listed in [`ROADMAP.md`](ROADMAP.md#backlog-unconfirmed-the-user-said-maybe-not-part-of-any-step-until-confirmed) until someone opens them as issues. A frontend is built in parallel by another team; this repo is backend only, with no CI.
 
 ## Tech stack
 
@@ -121,6 +120,15 @@ uv run ruff format --check .
 uv run pyright
 ```
 
+## Making changes
+
+Every change starts as a Github issue (bug, quesion, change request or feature). The agent workflow, run inside opencode, one session per phrase:
+1. `/triage #N` (or `/triage` plus the pasted issue text): read-only. Classifies the issue, checks - whether the behavior is intended, and recommends accept, defer, decline or workaround.
+2. Post the report as a comment on the issue. Declined or deferred issue end here.
+3. Accepted issues: `/start #N`, then `/tests`, `/code`, `/review`, `/wrapup`. Commit with - `Fixes #N` in the message
+
+How to judge a change (intent, money history, schema, API contract) is in [`MAINTENANCE.md`](MAINTENANCE.md). The repo records only decisions, business rules and tests, never issues themselves.
+
 ## Repo documentation
 
 | File | Holds |
@@ -128,8 +136,9 @@ uv run pyright
 | [`AGENTS.md`](AGENTS.md) | Standing rules for the building agent (architecture, database, TDD gates) |
 | [`DECISIONS.md`](DECISIONS.md) | Append-only log of confirmed decisions and discovered facts (D-xxx) |
 | [`BUSINESS.md`](BUSINESS.md) | The lab's business rules (ticked lines are authoritative) |
-| [`ROADMAP.md`](ROADMAP.md) | The plan and progress: one step = one session = one commit |
-
+| [`MAINTENANCE.md`](MAINTENANCE.md) | How to triage and judge live issues, bugs and change requests |
+| [`ROADMAP.md`](ROADMAP.md) | History: the original build plan and its progress (one step = one session = one commit) |
+| [`.opencode/`](.opencode/) | Agents (tester, coder, reviewer) and commands (/triage, /start, /tests, /code, /review, /wrapup) |
 ## License
 
 TBD.
