@@ -147,6 +147,8 @@ uv run ruff format --check .
 uv run pyright
 ```
 
+Commit messages follow Conventional Commits v1.0.0 (`<type>(<scope>): <imperative subject>`, subject <= 50 characters, body only for a non-obvious "why", footer `Fixes #N`). `/wrapup` prints the message; the user commits.
+
 ## 7. Never
 
 - Never invent endpoints, fields, columns, rules, versions or API calls.
