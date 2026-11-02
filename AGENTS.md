@@ -147,7 +147,12 @@ uv run ruff format --check .
 uv run pyright
 ```
 
-Commit messages follow Conventional Commits v1.0.0 (`<type>(<scope>): <imperative subject>`, subject <= 50 characters, body only for a non-obvious "why", footer `Fixes #N`). `/wrapup` prints the message; the user commits.
+Commit messages follow Conventional Commits v1.0.0 exactly (https://www.conventionalcommits.org/en/v1.0.0/#specification). Include EVERY applicable part, never omit one:
+- header `<type>(<scope>)!: <imperative subject>`; subject <= 50 characters; `!` before the colon marks a breaking change;
+- a body when the "why" is not obvious;
+- every applicable footer, including `BREAKING CHANGE: <what breaks>` for any backward-incompatible change
+  (for a schema change, say what old input now fails) and `Fixes #N` for the issue.
+`/wrapup` prints the message; the user commits.
 
 ## 7. Never
 

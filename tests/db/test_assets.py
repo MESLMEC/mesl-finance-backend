@@ -25,6 +25,13 @@ Tests referenced by the coverage table:
   T17 test_the_database_is_healthy_after_close
   T18 test_superuser_tamper_is_detected
 
+Issue #11 (migration 0002, `asset_purchase_needs_link`) adds three cases that are NOT
+lines of the example - the rule is new, so the example cannot cover it:
+
+  I1  test_a_purchase_must_name_its_payment
+  I2  test_a_purchase_with_a_link_is_accepted
+  I3  test_a_non_purchase_acquisition_needs_no_link
+
 Coverage proof - every `EXPECT` / `EXPECT FAIL` line of the example, in script order. The file
 header (line 1) only explains the marker convention, so it is not a row (D-100 (5) precedent).
 
@@ -39,6 +46,10 @@ header (line 1) only explains the marker convention, so it is not a row (D-100 (
   lines 13-17   four assets                                start()
   line 19       \echo prose
   lines 20-24   acquisitions (ESP32 linked to purchase)    T3 (acquisitions())
+                 line 23's Raspberry Pi purchase is
+                 INCOMPLETE in the example (no link);
+                 the ported seed corrects it under
+                 explicit approval (D-165)                   T3 (acquisitions())
   line 26       \echo prose
   lines 27-31   lend 4 to A, return 1, damage 1 with A     T4 (lend_cycle())
   line 32       \echo prose
@@ -267,7 +278,7 @@ async def acquisitions(db: TestDb, s0: date) -> int:
         db.app, ESP32, "acquired", 10, on=s0 + ONE_DAY, source="purchase", ledger_tx=purchase_tx
     )
     await ev(db.app, OSCILLOSCOPE, "acquired", 1, on=s0, source="admin")
-    await ev(db.app, PI, "acquired", 1, on=s0 + ONE_DAY, source="purchase")
+    await ev(db.app, PI, "acquired", 1, on=s0 + ONE_DAY, source="purchase", ledger_tx=purchase_tx)
     await ev(db.app, MULTIMETER, "acquired", 3, on=s0, source="admin")
     return esp32
 
@@ -456,10 +467,61 @@ async def test_acquisitions_succeed(db: TestDb) -> None:
     ] == [
         (ESP32, "acquired", 10, "purchase", purchase_tx),
         (OSCILLOSCOPE, "acquired", 1, "admin", None),
-        (PI, "acquired", 1, "purchase", None),
+        (PI, "acquired", 1, "purchase", purchase_tx),
         (MULTIMETER, "acquired", 3, "admin", None),
     ]
     assert esp32 > 0
+
+
+async def test_a_purchase_must_name_its_payment(db: TestDb) -> None:
+    """Issue #11: a `purchase` acquisition without a ledger link is refused by the database.
+
+    The rule is owned by PostgreSQL, not by the app, so every writer is bound by it
+    (direct SQL, the future Go backend). The refusal is the table CHECK
+    `asset_purchase_needs_link` -> SQLSTATE 23514 (`CheckViolationError`).
+    """
+    s0 = await start(db)
+    with pytest.raises(asyncpg.CheckViolationError) as exc:
+        await db.app.execute(
+            "INSERT INTO asset_events(asset_id, kind, quantity, occurred_on, recorded_by, source)"
+            " VALUES (3, 'acquired', 1, $1::date, 'treasurer', 'purchase')",
+            s0,
+        )
+    assert exc.value.constraint_name == "asset_purchase_needs_link"
+
+
+async def test_a_purchase_with_a_link_is_accepted(db: TestDb) -> None:
+    """Issue #11: the new CHECK refuses only the LINKLESS purchase; a linked one is fine."""
+    s0 = await start(db)
+    purchase_tx: int = await db.app.fetchval("SELECT max(id) FROM ledger_transactions")
+    await db.app.execute(
+        "INSERT INTO asset_events"
+        "(asset_id, kind, quantity, occurred_on, recorded_by, source, ledger_transaction_id)"
+        " VALUES (3, 'acquired', 1, $1::date, 'treasurer', 'purchase', $2)",
+        s0,
+        purchase_tx,
+    )
+    linked = await db.app.fetchval(
+        "SELECT ledger_transaction_id FROM asset_events WHERE asset_id = 3"
+    )
+    assert int(linked) == purchase_tx
+
+
+async def test_a_non_purchase_acquisition_needs_no_link(db: TestDb) -> None:
+    """Issue #11: only `source = 'purchase'` demands a link; `admin` needs none."""
+    s0 = await start(db)
+    await db.app.execute(
+        "INSERT INTO asset_events(asset_id, kind, quantity, occurred_on, recorded_by, source)"
+        " VALUES (3, 'acquired', 1, $1::date, 'treasurer', 'admin')",
+        s0,
+    )
+    rows: list[Any] = await db.app.fetch(
+        "SELECT source::text AS source, ledger_transaction_id FROM asset_events"
+        " WHERE asset_id = 3 AND kind = 'acquired'"
+    )
+    assert len(rows) == 1
+    assert rows[0]["source"] == "admin"
+    assert rows[0]["ledger_transaction_id"] is None
 
 
 async def test_lend_return_damage_repair_flow(db: TestDb) -> None:

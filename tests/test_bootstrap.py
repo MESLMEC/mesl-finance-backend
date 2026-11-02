@@ -146,7 +146,7 @@ async def test_migrations_reach_head(fresh_db: str, app_role: AppRole, tmp_path:
     result = _bootstrap(tmp_path, _boot_env(fresh_db, role, new_password), *BOOT_ARGS)
     assert result.returncode == 0, result.stderr
     versions = await _query(fresh_db, "SELECT version_num FROM alembic_version")
-    assert [row["version_num"] for row in versions] == ["0001"]
+    assert [row["version_num"] for row in versions] == ["0002"]
 
 
 async def test_first_tenure_opened_with_passed_name_and_date(

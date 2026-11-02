@@ -1082,3 +1082,19 @@ Gates this session (closing run): `uv run pytest` 942 passed (934 pre-existing +
 | ID | Proposal |
 |---|---|
 | B-27 (BUSINESS.md line, to be ticked by the user) | "When the lab buys something, the whole price leaves the wallet on the day it was paid. We do not store what an item is worth - the asset side only counts things. The link from the acquisition to the expense is the only record of what the item cost, so a purchase without a link is invalid." (The agent never ticks; the wording is the wrapup's offer - say the word and it is added to BUSINESS.md as an unticked line.) |
+
+## Added 2026-11-03 (sixtieth batch, issue #11 close). Earlier rows above are unchanged.
+
+### Confirmed by the user
+
+| ID | Date | Decision | Evidence (the user's words) | Relates to |
+|---|---|---|---|---|
+| D-169 | 2026-11-03 | Issue #11 shape, all five brief questions as the labelled suggestions: (Q1=a) correct ALL four linkless-purchase seeds, not only the one in the issue body - `tests/db/test_assets.py:270` and its read-back `:459`, plus `tests/tenures/api/test_snapshot_reads_api.py:70,93-94` (`purchase` -> `admin`, shelf arithmetic with no money, D-164); (Q3=a) the per-payload sha256 guard in a NEW `tests/test_payload_hash.py`; (Q4=a) three direct CHECK tests (linkless purchase -> 23514 naming the constraint, linked purchase accepted, non-purchase needs no link); (Q5=a) `downgrade()` raises `NotImplementedError`, matching 0001. | "all go with your suggestions, except last one." | #11, D-165, D-036, D-164 |
+| D-170 | 2026-11-03 | The two tests that hardcoded the Alembic head as `["0001"]` are updated to `["0002"]` rather than made dynamic: hardcoding stays a deliberate tripwire (same style as D-162's `EXPECTED_OPERATIONS`), and migrations are rare by D-018. `tests/db/test_template_alembic.py`'s docstring was corrected in the same edit. | "go with you recommendation" (after the reviewer compared hardcoding vs dynamic head) | D-169, D-162, D-018 |
+| D-171 | 2026-11-03 | Tests run only against `TEST_ADMIN_DSN` (a disposable test database). A test run must never point at the app database or depend on the app login's credentials. | "test db should be enough" / "you only concern about test dsn" | AGENTS.md section 6, D-032 |
+
+### Discovered facts (proposed; verified from tool output this session)
+
+| ID | Date | Fact | Evidence |
+|---|---|---|---|
+| D-172 (proposed) | 2026-11-03 | Facts for later migrations and tests. (1) Migration 0002's payload `db/sql/0002_asset_purchase_link.sql` has sha256 `34935c5a25ce4fbe88d386821fd1f573745dd49497d9db267e573abda274606a`, recorded as `PAYLOAD_SHA256` in `alembic/versions/0002_asset_purchase_link.py:31` and pinned by `tests/test_payload_hash.py` (fulfils D-036's deferred per-payload guard). (2) The template and bootstrap now reach `alembic_version = '0002'`; the two assertions that hardcode the head are `tests/db/test_template_alembic.py:17` and `tests/test_bootstrap.py:149` - EVERY future migration must bump both. (3) The CHECK is exactly `source IS DISTINCT FROM 'purchase' OR ledger_transaction_id IS NOT NULL`; a positive linkless purchase raises SQLSTATE 23514 with `constraint_name == "asset_purchase_needs_link"` (asyncpg `exceptions/_base.py:44`), while linked purchases and `admin` acquisitions pass. (4) The issue body under-listed the seeds: besides `tests/db/test_assets.py:270/:459`, `tests/tenures/api/test_snapshot_reads_api.py:70,93-94` also inserted linkless `purchase` rows and would have failed the suite; both files were corrected under D-169. (5) Final gates: `uv run pytest` 975 passed, ruff check clean, ruff format 339 files, pyright 0 errors. | gate output and installed-source reads this session; `db/schema.sql:655-669`; `alembic/versions/0002_asset_purchase_link.py:22-33`; `tests/db/test_assets.py:476-522` |

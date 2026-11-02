@@ -67,7 +67,7 @@ async def seed_handover(db: TestDb) -> None:
         )
         await db.app.execute(
             "INSERT INTO asset_events(asset_id, kind, quantity, occurred_on, recorded_by, source)"
-            " VALUES (1, 'acquired', 5, '2026-01-02', 'treasurer', 'purchase')"
+            " VALUES (1, 'acquired', 5, '2026-01-02', 'treasurer', 'admin')"
         )
         await db.app.execute(
             "INSERT INTO asset_events"
@@ -90,8 +90,8 @@ async def seed_order(db: TestDb) -> None:
         )
         await db.app.execute(
             "INSERT INTO asset_events(asset_id, kind, quantity, occurred_on, recorded_by, source)"
-            " VALUES (1, 'acquired', 5, '2026-01-02', 'treasurer', 'purchase'),"
-            " (2, 'acquired', 5, '2026-01-02', 'treasurer', 'purchase')"
+            " VALUES (1, 'acquired', 5, '2026-01-02', 'treasurer', 'admin'),"
+            " (2, 'acquired', 5, '2026-01-02', 'treasurer', 'admin')"
         )
         await db.app.execute(
             "INSERT INTO asset_events"
