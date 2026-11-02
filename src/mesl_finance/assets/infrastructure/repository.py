@@ -6,6 +6,7 @@ from mesl_finance.assets.domain.asset_activity import AssetActivityRow
 from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
 from mesl_finance.assets.domain.asset_event_fix import AssetEventFix
 from mesl_finance.assets.domain.asset_reads import AssetStateRow, WhoHasWhatRow
+from mesl_finance.shared.errors import UnknownReference, ValidationFailed
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -51,6 +52,41 @@ class SqlAssetRepository:
         )
         return int(result.scalar_one())
 
+    async def _check_purchase_link(self, link: int) -> None:
+        """Name the error before the FK can (see `add_event`'s docstring)."""
+        row = (
+            (
+                await self._uow.execute(
+                    """
+                SELECT x.kind::text AS kind, x.tenure_id,
+                       EXISTS (SELECT 1 FROM ledger_transactions r
+                                WHERE r.reverses_id = x.id) AS voided
+                  FROM ledger_transactions x
+                 WHERE x.id = :link
+                """,
+                    {"link": link},
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            raise UnknownReference(f"ledger entry {link} does not exist")
+        kind = str(row["kind"])
+        if kind != "expense":
+            raise ValidationFailed(
+                f"the payment must be an expense; ledger entry {link} is a {kind}"
+            )
+        if bool(row["voided"]):
+            raise ValidationFailed(
+                f"ledger entry {link} has been corrected away; name the entry that replaced it"
+            )
+        tenure = (await self._uow.execute("SELECT id FROM tenures WHERE closed_on IS NULL")).first()
+        if tenure is not None and int(row["tenure_id"]) != int(tenure[0]):
+            raise ValidationFailed(
+                f"the payment must belong to the open tenure; ledger entry {link} does not"
+            )
+
     async def get(self, asset_id: int) -> AssetView | None:
         result = await self._uow.execute(
             """
@@ -84,9 +120,21 @@ class SqlAssetRepository:
         return None if row is None else _asset_view(row)
 
     async def add_event(self, asset_id: int, event: AssetEvent, recorded_by: str) -> int | None:
+        """Write one event; None when the asset does not exist.
+
+        Issue #10: a payment named by a purchase is validated first, so the
+        app can answer by the error's real name before PostgreSQL's FK
+        (db/schema.sql:669) is reached. The named entry must EXIST
+        (`unknown_reference`), be an EXPENSE of the open tenure and not have
+        been corrected away (both `validation_failed`; `entries.is_voided`,
+        db/schema.sql:423, is the definition). With no link there is nothing
+        to check, so no extra query runs.
+        """
         exists = await self._uow.execute("SELECT 1 FROM assets WHERE id = :id", {"id": asset_id})
         if exists.first() is None:
             return None
+        if event.ledger_transaction_id is not None:
+            await self._check_purchase_link(event.ledger_transaction_id)
         result = await self._uow.execute(
             """
             INSERT INTO asset_events
@@ -135,7 +183,7 @@ class SqlFixEventRepository:
                 await self._uow.execute(
                     """
                     SELECT kind::text AS kind, quantity, member_id,
-                           source::text AS source, note
+                           source::text AS source, note, ledger_transaction_id
                       FROM asset_events
                      WHERE id = :event_id AND asset_id = :asset_id
                     """,
@@ -147,13 +195,18 @@ class SqlFixEventRepository:
         )
         if original is None:
             return None
+        event_link = (
+            None
+            if original["ledger_transaction_id"] is None
+            else int(original["ledger_transaction_id"])
+        )
         reversal = await self._uow.execute(
             """
             INSERT INTO asset_events
                    (asset_id, kind, quantity, member_id, occurred_on, recorded_by,
-                    note, source, reverses_id)
+                    note, source, ledger_transaction_id, reverses_id)
             VALUES (:asset_id, :kind, :reversal_quantity, :member_id, :occurred_on,
-                    :recorded_by, :note, :source, :event_id)
+                    :recorded_by, :note, :source, :ledger_transaction_id, :event_id)
             RETURNING id
             """,
             {
@@ -165,6 +218,7 @@ class SqlFixEventRepository:
                 "recorded_by": recorded_by,
                 "note": fix.note,
                 "source": original["source"],
+                "ledger_transaction_id": event_link,
                 "event_id": event_id,
             },
         )
@@ -173,9 +227,9 @@ class SqlFixEventRepository:
             """
             INSERT INTO asset_events
                    (asset_id, kind, quantity, member_id, occurred_on, recorded_by,
-                    note, source, replaces_id)
+                    note, source, ledger_transaction_id, replaces_id)
             VALUES (:asset_id, :kind, :quantity, :member_id, :occurred_on,
-                    :recorded_by, :note, :source, :event_id)
+                    :recorded_by, :note, :source, :ledger_transaction_id, :event_id)
             RETURNING id
             """,
             {
@@ -187,6 +241,7 @@ class SqlFixEventRepository:
                 "recorded_by": recorded_by,
                 "note": original["note"],
                 "source": original["source"],
+                "ledger_transaction_id": event_link,
                 "event_id": event_id,
             },
         )
@@ -198,6 +253,7 @@ class SqlFixEventRepository:
             quantity=fix.quantity,
             occurred_on=fix.occurred_on,
             note=str(original["note"]),
+            ledger_transaction_id=event_link,
         )
         return replacement_id, reversal_id, view
 

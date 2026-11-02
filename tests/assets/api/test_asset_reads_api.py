@@ -114,7 +114,7 @@ async def test_asset_state_returns_every_asset_with_its_counts(
     alpha = await asset(client, auth, "Alpha Kit")
     beta = await asset(client, auth, "Beta Kit")
     person = await borrower(client, auth)
-    await event(client, auth, alpha["id"], "acquired", quantity=4, source="purchase")
+    await event(client, auth, alpha["id"], "acquired", quantity=4, source="admin")
     await event(client, auth, alpha["id"], "lent", quantity=2, member_id=person)
     await damaged(client, auth, alpha["id"])
 
@@ -172,8 +172,8 @@ async def test_who_has_what_lists_what_members_hold(
     first = await asset(client, auth, "Alpha Kit")
     second = await asset(client, auth, "Zebra Kit")
     person = await borrower(client, auth, name="Ayesha")
-    await event(client, auth, first["id"], "acquired", quantity=2, source="purchase")
-    await event(client, auth, second["id"], "acquired", quantity=3, source="purchase")
+    await event(client, auth, first["id"], "acquired", quantity=2, source="admin")
+    await event(client, auth, second["id"], "acquired", quantity=3, source="admin")
     await event(client, auth, first["id"], "lent", quantity=2, member_id=person)
     await event(client, auth, second["id"], "lent", quantity=1, member_id=person)
 
@@ -196,7 +196,7 @@ async def test_who_has_what_drops_a_net_zero_holding(
     returned lend leaves the list."""
     thing = await asset(client, auth, "Alpha Kit")
     person = await borrower(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=2, source="purchase")
+    await event(client, auth, thing["id"], "acquired", quantity=2, source="admin")
     await event(client, auth, thing["id"], "lent", quantity=1, member_id=person)
     await event(client, auth, thing["id"], "returned", quantity=1, member_id=person)
 
@@ -218,8 +218,8 @@ async def test_the_replacement_queue_lists_only_admin_items_with_damage(
     lab_kit = await asset(client, auth, "Alpha Kit", ownership="lab")
     admin_kit = await asset(client, auth, "Beta Kit", ownership="admin")
     healthy_admin = await asset(client, auth, "Gamma Kit", ownership="admin")
-    await event(client, auth, lab_kit["id"], "acquired", quantity=1, source="purchase")
-    await event(client, auth, admin_kit["id"], "acquired", quantity=1, source="purchase")
+    await event(client, auth, lab_kit["id"], "acquired", quantity=1, source="admin")
+    await event(client, auth, admin_kit["id"], "acquired", quantity=1, source="admin")
     await damaged(client, auth, lab_kit["id"])
     await damaged(client, auth, admin_kit["id"])
 

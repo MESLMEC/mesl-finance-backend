@@ -5,6 +5,9 @@ case commits once in its own transaction and passes the JWT actor down, the
 same shape as the ledger and member write use cases. The slices declare their
 own ports (D-085 pattern): ``AssetRepository`` with ``create_asset`` and
 ``add_event``, and an ``AssetUnitOfWork`` exposing it as ``.assets``.
+
+Issue #10 (2026-11-02): the event answer also carries the link to the payment
+that bought a purchase, so the use case returns it and the seed names one.
 """
 
 from datetime import date
@@ -49,12 +52,15 @@ def asset_command(**overrides: object) -> Any:
 
 
 def event_command(**overrides: object) -> Any:
+    """Issue #10: a purchase acquisition names the expense that paid for it,
+    so the seed carries a link."""
     fields: dict[str, object] = {
         "asset_id": 5,
         "kind": "acquired",
         "quantity": 10,
         "occurred_on": date(2026, 2, 1),
         "source": "purchase",
+        "ledger_transaction_id": 9,
     }
     fields.update(overrides)
     return _event_command()(**fields)
@@ -128,3 +134,14 @@ async def test_record_event_commits_once_in_one_transaction() -> None:
     asset_id, event, recorded_by = uow.assets.events[0]
     assert (asset_id, event.kind, event.quantity, recorded_by) == (5, "acquired", 10, "treasurer")
     assert (view.id, view.asset_id, view.kind, view.quantity) == (42, 5, "acquired", 10)
+
+
+async def test_record_event_returns_the_purchase_link() -> None:
+    """Issue #10: the answer carries the link to the payment."""
+    uows: list[FakeUow] = []
+
+    view = await _event_use_case()(_factory(uows))(event_command(), actor="treasurer")
+
+    assert view.ledger_transaction_id == 9
+    _asset_id, event, _recorded_by = uows[0].assets.events[0]
+    assert event.ledger_transaction_id == 9

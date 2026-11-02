@@ -21,10 +21,12 @@ suggestions):
 - Q5=a the response is ``201 {"id","asset_id","kind","quantity","occurred_on",
   "note","reversal_id"}`` - no counts (9.1 Q8=a).
 
-Unpinned on purpose (no rule decides it, so no test pins it): whether the
-reversal/replacement rows copy the original's ``ledger_transaction_id`` -
-db/schema.sql:673 allows it on any ``acquired`` row and the mirror tuple
-(:746-747) does not include it.
+Issue #10 (2026-11-02) decides what 9.2 left unpinned: the reversal AND the
+replacement copy the original's ``ledger_transaction_id``, so correcting a
+purchase cannot erase the cost trail (this closes D-135 (3)). The fix answer
+also carries the link (brief Q4=b), so ``FIX_FIELDS`` has eight keys. A
+``source: "purchase"`` acquisition must name the expense that paid for it, so
+the seeds below pay for what they buy; an admin-given kit carries no link.
 
 Anti-vacuous 404 tests (the D-108 (1) lesson): a missing route answers the
 same framework 404, so every 404 test below first completes a VALID fix and
@@ -52,7 +54,15 @@ from httpx import AsyncClient
 
 from tests.conftest import USERNAME, TestDb
 
-EVENT_FIELDS = {"id", "asset_id", "kind", "quantity", "occurred_on", "note"}
+EVENT_FIELDS = {
+    "id",
+    "asset_id",
+    "kind",
+    "quantity",
+    "occurred_on",
+    "note",
+    "ledger_transaction_id",
+}
 FIX_FIELDS = EVENT_FIELDS | {"reversal_id"}
 FIX_DAY = "2026-02-01"
 
@@ -71,6 +81,23 @@ async def asset(client: AsyncClient, auth: dict[str, str], mode: str = "counted"
     )
     assert response.status_code == 201
     return response.json()
+
+
+async def purchase_expense(client: AsyncClient, auth: dict[str, str], amount: int = 300) -> int:
+    """Spend money on a component (the expense action, step 6.3); returns the
+    expense's id. Issue #10: a purchase acquisition names this payment."""
+    await client.post(
+        "/api/v1/deposits",
+        json={"amount": amount + 100, "occurred_on": "2026-02-01", "source": "sponsorship"},
+        headers=auth,
+    )
+    response = await client.post(
+        "/api/v1/expenses",
+        json={"amount": amount, "occurred_on": "2026-02-01", "envelope_id": 1},
+        headers=auth,
+    )
+    assert response.status_code == 201
+    return int(response.json()["id"])
 
 
 async def borrower(client: AsyncClient, auth: dict[str, str], name: str = "Basana") -> int:
@@ -108,7 +135,8 @@ async def fix_event(
 async def stored_event(db: TestDb, event_id: int) -> dict[str, Any]:
     row = await db.owner.fetchrow(
         "SELECT id, asset_id, kind::text AS kind, quantity, member_id, occurred_on,"
-        " note, source::text AS source, recorded_by, reverses_id, replaces_id"
+        " note, source::text AS source, recorded_by, reverses_id, replaces_id,"
+        " ledger_transaction_id"
         " FROM asset_events WHERE id = $1",
         event_id,
     )
@@ -138,7 +166,16 @@ async def mistaken_lend(
     (asset_id, member_id, original_event_id, original_quantity)."""
     thing = await asset(client, auth)
     person = await borrower(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=acquired, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=acquired,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     mistake = await event(
         client,
         auth,
@@ -196,7 +233,16 @@ async def test_fixing_an_acquisition_keeps_the_source(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     asset_id = (await asset(client, auth))["id"]
-    acquired = await event(client, auth, asset_id, "acquired", quantity=10, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    acquired = await event(
+        client,
+        auth,
+        asset_id,
+        "acquired",
+        quantity=10,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
 
     response = await fix_event(client, auth, asset_id, int(acquired["id"]), quantity=8)
 
@@ -236,6 +282,50 @@ async def test_the_current_view_collapses_the_fix_to_one_line(
         (mistake_id - 1, None),
         (int(first.json()["id"]), mistake_id),
     }
+
+
+async def test_fixing_a_purchase_keeps_the_link_on_both_rows(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    """Issue #10, brief Q4=b: the reversal AND the replacement carry the
+    original's link, so correcting a purchase cannot erase the cost trail
+    (this closes the question D-135 (3) left open)."""
+    asset_id = (await asset(client, auth))["id"]
+    expense_id = await purchase_expense(client, auth)
+    acquired = await event(
+        client,
+        auth,
+        asset_id,
+        "acquired",
+        quantity=10,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
+
+    response = await fix_event(client, auth, asset_id, int(acquired["id"]), quantity=8)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["ledger_transaction_id"] == expense_id
+    reversal = await stored_event(lab, int(body["reversal_id"]))
+    replacement = await stored_event(lab, int(body["id"]))
+    assert reversal["ledger_transaction_id"] == expense_id
+    assert replacement["ledger_transaction_id"] == expense_id
+
+
+async def test_fixing_an_admin_acquisition_leaves_the_link_empty(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    """An admin-given item never had a payment, so the fix writes no link."""
+    asset_id = (await asset(client, auth))["id"]
+    acquired = await event(client, auth, asset_id, "acquired", quantity=1, source="admin")
+
+    response = await fix_event(client, auth, asset_id, int(acquired["id"]), quantity=1)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["ledger_transaction_id"] is None
+    assert (await stored_event(lab, int(body["id"])))["ledger_transaction_id"] is None
 
 
 # ---- PostgreSQL's walls: 409 rule_violation, nothing written -----------------

@@ -36,12 +36,16 @@ class EditAssetRequest(BaseModel):
 
 
 class AssetEventOut(BaseModel):
+    """The event as stored; `ledger_transaction_id` names the expense that
+    paid for a `purchase` (issue #10)."""
+
     id: int
     asset_id: int
     kind: str
     quantity: int
     occurred_on: date
     note: str
+    ledger_transaction_id: int | None
 
 
 class AssetEventRequest(BaseModel):
@@ -72,6 +76,7 @@ class FixEventOut(BaseModel):
     occurred_on: date
     note: str
     reversal_id: int
+    ledger_transaction_id: int | None
 
 
 class AssetStateOut(BaseModel):

@@ -13,6 +13,20 @@ through the foreign key (D-110); Q8=a 201
 `{"id","asset_id","kind","quantity","occurred_on","note"}` - no counts, 9.3
 owns the reads; Q9=a `ledger_transaction_id` is an optional body field.
 
+Issue #10 (2026-11-02) changes two of those answers:
+- Q9=a becomes: `ledger_transaction_id` is optional in general, but a
+  `source: "purchase"` REQUIRES it - the lab keeps no taka value for an item,
+  so the link to the expense is the only cost trail. The refusals and the
+  other link rules live in tests/assets/api/test_asset_purchase_link_api.py;
+- Q8=a becomes: the event answer also carries `ledger_transaction_id`, so
+  EVENT_FIELDS below has seven keys.
+
+The purchase seeds in this file now name a real expense (the `purchase_expense`
+helper: a deposit, then an expense on the pool) instead of pretending a
+purchase happened without a payment. The refusal tests use `source: "admin"`
+where money is not the subject of the test, so they still fail for their own
+reason.
+
 Database rules these tests rely on (db/schema.sql, read this session):
 - `asset_event_guard` (:726-752): no event before the tenure opened ("events
   cannot be dated inside a closed tenure", P0001 -> 409 `rule_violation`; the
@@ -49,7 +63,15 @@ from httpx import AsyncClient
 
 from tests.conftest import USERNAME, TestDb
 
-EVENT_FIELDS = {"id", "asset_id", "kind", "quantity", "occurred_on", "note"}
+EVENT_FIELDS = {
+    "id",
+    "asset_id",
+    "kind",
+    "quantity",
+    "occurred_on",
+    "note",
+    "ledger_transaction_id",
+}
 BUCKET_KEYS = ("stock", "damaged", "lost", "scrapped", "exchanged", "held")
 
 
@@ -67,6 +89,23 @@ async def asset(client: AsyncClient, auth: dict[str, str], mode: str = "counted"
     )
     assert response.status_code == 201
     return response.json()
+
+
+async def purchase_expense(client: AsyncClient, auth: dict[str, str], amount: int = 300) -> int:
+    """Spend money on a component (the expense action, step 6.3); returns the
+    expense's id. Issue #10: a purchase acquisition names this payment."""
+    await client.post(
+        "/api/v1/deposits",
+        json={"amount": amount + 100, "occurred_on": "2026-02-01", "source": "sponsorship"},
+        headers=auth,
+    )
+    response = await client.post(
+        "/api/v1/expenses",
+        json={"amount": amount, "occurred_on": "2026-02-01", "envelope_id": 1},
+        headers=auth,
+    )
+    assert response.status_code == 201
+    return int(response.json()["id"])
 
 
 async def borrower(
@@ -142,16 +181,14 @@ async def event_count(db: TestDb) -> Any:
 # ---- 201 lifecycles (one test per kind; counts read from the DB) -------------
 
 
-async def test_acquired_with_source_and_optional_ledger_link_is_stored(
+async def test_acquired_with_source_and_its_purchase_link_is_stored(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
+    """Issue #10: a purchase names the EXPENSE that paid for it (the 9.1
+    version of this test linked a deposit and expected 201; that is now a
+    refusal - see tests/assets/api/test_asset_purchase_link_api.py)."""
     thing = await asset(client, auth)
-    purchase = await client.post(
-        "/api/v1/deposits",
-        json={"amount": 500, "occurred_on": "2026-02-01", "source": "other"},
-        headers=auth,
-    )
-    assert purchase.status_code == 201
+    expense_id = await purchase_expense(client, auth)
 
     linked = await event(
         client,
@@ -159,7 +196,7 @@ async def test_acquired_with_source_and_optional_ledger_link_is_stored(
         thing["id"],
         "acquired",
         source="purchase",
-        ledger_transaction_id=purchase.json()["id"],
+        ledger_transaction_id=expense_id,
     )
     assert linked.status_code == 201
     body = linked.json()
@@ -184,7 +221,7 @@ async def test_acquired_with_source_and_optional_ledger_link_is_stored(
         None,
         USERNAME,
     )
-    assert row["ledger_transaction_id"] == purchase.json()["id"]
+    assert row["ledger_transaction_id"] == expense_id
 
     plain = await event(client, auth, thing["id"], "acquired", source="admin", quantity=1)
     assert plain.status_code == 201
@@ -197,7 +234,16 @@ async def test_lend_then_return_moves_the_held_count(
 ) -> None:
     thing = await asset(client, auth)
     person = await borrower(client, auth)
-    acquired = await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    acquired = await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=4,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     assert acquired.status_code == 201
 
     lent = await event(client, auth, thing["id"], "lent", quantity=2, member_id=person["id"])
@@ -227,7 +273,16 @@ async def test_damaged_by_a_member_moves_held_to_damaged(
 ) -> None:
     thing = await asset(client, auth)
     person = await borrower(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=4,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     lent = await event(client, auth, thing["id"], "lent", quantity=2, member_id=person["id"])
     assert lent.status_code == 201
 
@@ -257,7 +312,16 @@ async def test_lost_from_stock_and_scrapped_from_damaged(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     thing = await asset(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=5, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=5,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     lost = await event(client, auth, thing["id"], "lost", quantity=1, note="missing after workshop")
     assert lost.status_code == 201
     damaged = await event(client, auth, thing["id"], "damaged", quantity=1, note="dead display")
@@ -280,7 +344,16 @@ async def test_repaired_moves_damaged_back_to_stock(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     thing = await asset(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=4,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     damaged = await event(client, auth, thing["id"], "damaged", quantity=1, note="overheated")
     assert damaged.status_code == 201
     assert await buckets(lab, thing["id"]) == {
@@ -310,7 +383,16 @@ async def test_exchanged_never_touches_stock(
 ) -> None:
     """`asset_event_effects` (:696-714): scrapped and exchanged add 0 to stock."""
     thing = await asset(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=2, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=2,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     damaged = await event(client, auth, thing["id"], "damaged", quantity=1, note="dead display")
     assert damaged.status_code == 201
 
@@ -338,7 +420,16 @@ async def test_a_correction_counts_the_physical_count_difference(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     thing = await asset(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=5, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=5,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
 
     down = await event(
         client, auth, thing["id"], "correction", quantity=-1, note="physical count found 5"
@@ -371,7 +462,7 @@ async def test_lending_and_returning_need_a_member(
 @pytest.mark.parametrize(
     ("kind", "extra"),
     [
-        ("acquired", {"source": "purchase"}),
+        ("acquired", {"source": "admin"}),
         ("repaired", {}),
         ("scrapped", {"note": "not repairable"}),
         ("exchanged", {"note": "sent to admin"}),
@@ -430,7 +521,7 @@ async def test_a_zero_quantity_is_refused(
 ) -> None:
     thing = await asset(client, auth)
 
-    response = await event(client, auth, thing["id"], "acquired", quantity=0, source="purchase")
+    response = await event(client, auth, thing["id"], "acquired", quantity=0, source="admin")
 
     assert_problem(response, 422, "validation_failed")
     assert await event_count(lab) == 0
@@ -444,7 +535,7 @@ async def test_a_negative_quantity_is_only_for_a_correction(
 
     body: dict[str, Any] = {"kind": kind, "quantity": -1, "occurred_on": "2026-02-01"}
     if kind == "acquired":
-        body["source"] = "purchase"
+        body["source"] = "admin"
     else:
         body["member_id"] = 1
     response = await client.post(f"/api/v1/assets/{thing['id']}/events", json=body, headers=auth)
@@ -462,9 +553,7 @@ async def test_a_non_whole_quantity_is_a_validation_error(
 ) -> None:
     thing = await asset(client, auth)
 
-    response = await event(
-        client, auth, thing["id"], "acquired", quantity=quantity, source="purchase"
-    )
+    response = await event(client, auth, thing["id"], "acquired", quantity=quantity, source="admin")
 
     assert_problem(response, 422, "validation_error")
     assert await event_count(lab) == 0
@@ -475,7 +564,7 @@ async def test_a_non_numeric_asset_id_is_422(
 ) -> None:
     response = await client.post(
         "/api/v1/assets/abc/events",
-        json=event_body("acquired", source="purchase"),
+        json=event_body("acquired", source="admin"),
         headers=auth,
     )
 
@@ -484,7 +573,7 @@ async def test_a_non_numeric_asset_id_is_422(
 
 async def test_recording_an_event_without_a_token_is_401(client: AsyncClient, lab: TestDb) -> None:
     response = await client.post(
-        "/api/v1/assets/1/events", json=event_body("acquired", source="purchase")
+        "/api/v1/assets/1/events", json=event_body("acquired", source="admin")
     )
 
     assert_problem(response, 401, "invalid_token")
@@ -500,7 +589,16 @@ async def test_lending_beyond_stock_is_409(
     """`asset_bucket_check` (:763): "not enough in stock: short by N"."""
     thing = await asset(client, auth)
     person = await borrower(client, auth)
-    seeded = await event(client, auth, thing["id"], "acquired", quantity=2, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    seeded = await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=2,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     assert seeded.status_code == 201
 
     response = await event(client, auth, thing["id"], "lent", quantity=3, member_id=person["id"])
@@ -517,7 +615,16 @@ async def test_returning_more_than_the_member_holds_is_409(
     that"."""
     thing = await asset(client, auth)
     person = await borrower(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=2, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=2,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     lent = await event(client, auth, thing["id"], "lent", quantity=1, member_id=person["id"])
     assert lent.status_code == 201
 
@@ -567,7 +674,7 @@ async def test_an_event_before_the_tenure_opened_is_409(
     thing = await asset(client, auth)
 
     response = await event(
-        client, auth, thing["id"], "acquired", occurred_on="2025-12-31", source="purchase"
+        client, auth, thing["id"], "acquired", occurred_on="2025-12-31", source="admin"
     )
 
     assert_problem(response, 409, "rule_violation")
@@ -583,10 +690,10 @@ async def test_an_event_for_an_unknown_asset_is_404(
 ) -> None:
     # Prove the route exists first: an unmatched path is a framework 404 too.
     thing = await asset(client, auth)
-    known = await event(client, auth, thing["id"], "acquired", source="purchase")
+    known = await event(client, auth, thing["id"], "acquired", source="admin")
     assert known.status_code == 201
 
-    response = await event(client, auth, 9999, "acquired", source="purchase")
+    response = await event(client, auth, 9999, "acquired", source="admin")
 
     assert_problem(response, 404, "not_found")
     assert "9999" in response.json()["detail"]
@@ -613,7 +720,7 @@ async def test_an_unknown_ledger_transaction_is_unknown_reference(
     thing = await asset(client, auth)
 
     response = await event(
-        client, auth, thing["id"], "acquired", source="purchase", ledger_transaction_id=9999
+        client, auth, thing["id"], "acquired", source="purchase", ledger_transaction_id=999999
     )
 
     assert_problem(response, 422, "unknown_reference")

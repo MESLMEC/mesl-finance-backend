@@ -19,6 +19,12 @@ Database rules these tests rely on (db/schema.sql, read this session):
 Seeding goes through the 9.1/9.2 API routes; the tenure in the `lab` fixture
 opened on 2026-01-01, so every date is on or after it.
 
+Issue #10 (2026-11-02): a `source: "purchase"` acquisition must name the
+expense that paid for it, so the report's own source column is exercised with
+a real purchase (the `purchase_expense` helper); the seeds whose subject is
+the report's window or ordering use `source: "admin"`, where no payment is
+part of the story.
+
 Library APIs used, all verified in installed source this session:
 - `httpx.AsyncClient.get` with `params=` (httpx 0.28.1, _client.py:1751);
 - FastAPI parses ISO date query params; a malformed or missing one answers
@@ -52,6 +58,23 @@ async def asset(client: AsyncClient, auth: dict[str, str], name: str) -> dict[st
     )
     assert response.status_code == 201
     return response.json()
+
+
+async def purchase_expense(client: AsyncClient, auth: dict[str, str], amount: int = 300) -> int:
+    """Spend money on a component (the expense action, step 6.3); returns the
+    expense's id. Issue #10: a purchase acquisition names this payment."""
+    await client.post(
+        "/api/v1/deposits",
+        json={"amount": amount + 100, "occurred_on": "2026-02-01", "source": "sponsorship"},
+        headers=auth,
+    )
+    response = await client.post(
+        "/api/v1/expenses",
+        json={"amount": amount, "occurred_on": "2026-02-01", "envelope_id": 1},
+        headers=auth,
+    )
+    assert response.status_code == 201
+    return int(response.json()["id"])
 
 
 async def borrower(client: AsyncClient, auth: dict[str, str]) -> int:
@@ -89,7 +112,16 @@ async def test_activity_rows_carry_the_functions_six_columns(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     thing = await asset(client, auth, "Alpha Kit")
-    await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
+    expense_id = await purchase_expense(client, auth)
+    await event(
+        client,
+        auth,
+        thing["id"],
+        "acquired",
+        quantity=4,
+        source="purchase",
+        ledger_transaction_id=expense_id,
+    )
     await event(client, auth, thing["id"], "damaged", quantity=1, note="burnt")
 
     response = await activity(client, auth)
@@ -115,7 +147,7 @@ async def test_rows_are_ordered_by_name_then_kind_ordinal(
     (2nd) before `damaged` (4th), although `damaged` sorts first as text."""
     thing = await asset(client, auth, "Alpha Kit")
     person = await borrower(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
+    await event(client, auth, thing["id"], "acquired", quantity=4, source="admin")
     await event(client, auth, thing["id"], "lent", quantity=2, member_id=person)
     await event(client, auth, thing["id"], "damaged", quantity=1, note="burnt")
 
@@ -129,7 +161,7 @@ async def test_the_window_excludes_events_outside_it(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     thing = await asset(client, auth, "Alpha Kit")
-    await event(client, auth, thing["id"], "acquired", quantity=3, source="purchase")
+    await event(client, auth, thing["id"], "acquired", quantity=3, source="admin")
     await event(
         client, auth, thing["id"], "damaged", quantity=1, note="burnt", occurred_on="2026-01-31"
     )
@@ -152,7 +184,7 @@ async def test_a_fixed_event_counts_once_as_its_replacement(
     mistaken lend is not counted, the replacement is."""
     thing = await asset(client, auth, "Alpha Kit")
     person = await borrower(client, auth)
-    await event(client, auth, thing["id"], "acquired", quantity=4, source="purchase")
+    await event(client, auth, thing["id"], "acquired", quantity=4, source="admin")
     mistake = await event(
         client, auth, thing["id"], "lent", quantity=2, member_id=person, note="robot arm"
     )
@@ -188,7 +220,7 @@ async def test_a_reversed_window_is_empty_not_an_error(
 ) -> None:
     """Q5=a: no rule refuses from > to; the function answers no rows."""
     thing = await asset(client, auth, "Alpha Kit")
-    await event(client, auth, thing["id"], "acquired", quantity=1, source="purchase")
+    await event(client, auth, thing["id"], "acquired", quantity=1, source="admin")
 
     response = await activity(client, auth, from_date="2026-03-01", to_date="2026-02-01")
 

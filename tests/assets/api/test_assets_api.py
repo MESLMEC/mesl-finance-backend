@@ -72,8 +72,11 @@ async def created(client: AsyncClient, auth: dict[str, str], **overrides: Any) -
 
 
 async def acquired(client: AsyncClient, auth: dict[str, str], asset_id: int) -> Any:
-    """Seed one event so `asset_guard` locks mode/ownership (Q1=a creates it)."""
-    body = {"kind": "acquired", "quantity": 5, "occurred_on": "2026-02-01", "source": "purchase"}
+    """Seed one event so `asset_guard` locks mode/ownership (Q1=a creates it).
+
+    Issue #10: an admin-given kit needs no payment, so this seed carries no
+    link - the subject of the test is the mode lock, not the money."""
+    body = {"kind": "acquired", "quantity": 5, "occurred_on": "2026-02-01", "source": "admin"}
     return await client.post(f"/api/v1/assets/{asset_id}/events", json=body, headers=auth)
 
 

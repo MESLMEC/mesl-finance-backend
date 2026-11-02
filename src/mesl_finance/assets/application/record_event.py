@@ -53,4 +53,5 @@ class RecordAssetEvent:
             quantity=event.quantity,
             occurred_on=event.occurred_on,
             note=event.note,
+            ledger_transaction_id=event.ledger_transaction_id,
         )

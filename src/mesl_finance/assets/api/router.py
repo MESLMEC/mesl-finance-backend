@@ -127,6 +127,7 @@ def _event_out(view: AssetEventView) -> AssetEventOut:
         quantity=view.quantity,
         occurred_on=view.occurred_on,
         note=view.note,
+        ledger_transaction_id=view.ledger_transaction_id,
     )
 
 
@@ -245,6 +246,7 @@ async def post_fix_event(
         occurred_on=view.occurred_on,
         note=view.note,
         reversal_id=reversal_id,
+        ledger_transaction_id=view.ledger_transaction_id,
     )
 
 

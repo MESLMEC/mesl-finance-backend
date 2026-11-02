@@ -24,6 +24,10 @@ What these tests pin (the domain API /code must provide):
     kind (db/schema.sql:674-676) - app pre-refusal Q5=a
   - a blank note on the five kinds that require one (db/schema.sql:678-679)
     - app pre-refusal Q5=a
+  - a `purchase` with no `ledger_transaction_id` (issue #10, brief Q1=a/Q2=a):
+    a lab-money purchase must name the payment that bought it, so the
+    acquisition-to-expense link is the only cost trail the lab keeps (the
+    database backstop for it is issue #11's CHECK, not in the schema yet)
 
 Not tested here, on purpose: the ledger link only on `acquired`
 (db/schema.sql:673) was not part of the approved Q5 enumeration, so the CHECK
@@ -173,7 +177,11 @@ def test_the_source_pairs_only_with_acquired(kind: str, extra: dict[str, Any]) -
 
 def test_an_acquired_event_keeps_its_source() -> None:
     thing = _event_class().create(
-        kind="acquired", quantity=10, occurred_on=date(2026, 2, 1), source="purchase"
+        kind="acquired",
+        quantity=10,
+        occurred_on=date(2026, 2, 1),
+        source="purchase",
+        ledger_transaction_id=9,
     )
 
     assert thing.source == "purchase"
@@ -230,7 +238,56 @@ def test_a_blank_note_is_refused_on_the_kinds_that_need_one(kind: str, note: str
 
 def test_the_note_defaults_to_empty_where_one_is_not_needed() -> None:
     thing = _event_class().create(
-        kind="acquired", quantity=10, occurred_on=date(2026, 2, 1), source="purchase"
+        kind="acquired",
+        quantity=10,
+        occurred_on=date(2026, 2, 1),
+        source="purchase",
+        ledger_transaction_id=9,
     )
 
     assert thing.note == ""
+
+
+def test_a_purchase_needs_the_payment_that_bought_it() -> None:
+    """Issue #10: a lab-money purchase must name its payment.
+
+    The lab keeps no taka value for an item, so the link to the expense is the
+    only record of what it cost (brief Q1=a/Q2=a). The rule is the app's own
+    pre-refusal; the database backstop (issue #11's CHECK) is not in the
+    schema yet.
+    """
+    with pytest.raises(ValidationFailed, match="purchase"):
+        _event_class().create(
+            kind="acquired",
+            quantity=10,
+            occurred_on=date(2026, 2, 1),
+            source="purchase",
+            ledger_transaction_id=None,
+        )
+
+
+def test_a_purchase_with_a_link_is_accepted() -> None:
+    thing = _event_class().create(
+        kind="acquired",
+        quantity=10,
+        occurred_on=date(2026, 2, 1),
+        source="purchase",
+        ledger_transaction_id=7,
+    )
+
+    assert (thing.source, thing.ledger_transaction_id) == ("purchase", 7)
+
+
+@pytest.mark.parametrize("source", ["admin", "donation", "project_return", "replacement", "other"])
+def test_a_non_purchase_may_omit_the_link(source: str) -> None:
+    """Only money the lab spends needs a payment; an admin-given or donated
+    item has none (brief Q1=a)."""
+    thing = _event_class().create(
+        kind="acquired",
+        quantity=1,
+        occurred_on=date(2026, 2, 1),
+        source=source,
+        ledger_transaction_id=None,
+    )
+
+    assert (thing.source, thing.ledger_transaction_id) == (source, None)

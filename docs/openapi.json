@@ -283,6 +283,7 @@
         "type": "string"
       },
       "AssetEventOut": {
+        "description": "The event as stored; `ledger_transaction_id` names the expense that\npaid for a `purchase` (issue #10).",
         "properties": {
           "asset_id": {
             "title": "Asset Id",
@@ -295,6 +296,17 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "ledger_transaction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Transaction Id"
           },
           "note": {
             "title": "Note",
@@ -316,7 +328,8 @@
           "kind",
           "quantity",
           "occurred_on",
-          "note"
+          "note",
+          "ledger_transaction_id"
         ],
         "title": "AssetEventOut",
         "type": "object"
@@ -1593,6 +1606,17 @@
             "title": "Kind",
             "type": "string"
           },
+          "ledger_transaction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Transaction Id"
+          },
           "note": {
             "title": "Note",
             "type": "string"
@@ -1618,7 +1642,8 @@
           "quantity",
           "occurred_on",
           "note",
-          "reversal_id"
+          "reversal_id",
+          "ledger_transaction_id"
         ],
         "title": "FixEventOut",
         "type": "object"
