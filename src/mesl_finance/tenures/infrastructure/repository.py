@@ -19,6 +19,9 @@ def _tenure_view(row: Any) -> TenureView:
         id=int(row["id"]),
         name=str(row["name"]),
         opened_on=row["opened_on"],
+        closed_on=row.get("closed_on", None),
+        closed_at=row.get("closed_at", None),
+        closing_checksum=row.get("closing_checksum", None),
     )
 
 
@@ -87,10 +90,35 @@ class SqlTenureRepository:
         )
         row_id = int(result.scalar_one())
         result = await self._uow.execute(
-            "SELECT id, name, opened_on FROM tenures WHERE id = :id",
+            """
+            SELECT id, name, opened_on, closed_on, closed_at, closing_checksum
+              FROM tenures
+             WHERE id = :id
+            """,
             {"id": row_id},
         )
         return _tenure_view(result.mappings().one())
+
+    async def list_all(self) -> list[TenureView]:
+        result = await self._uow.execute(
+            """
+            SELECT id, name, opened_on, closed_on, closed_at, closing_checksum
+              FROM tenures
+             ORDER BY id ASC
+            """
+        )
+        return [_tenure_view(row) for row in result.mappings().all()]
+
+    async def get_open(self) -> TenureView | None:
+        result = await self._uow.execute(
+            """
+            SELECT id, name, opened_on, closed_on, closed_at, closing_checksum
+              FROM tenures
+             WHERE closed_on IS NULL
+            """
+        )
+        row = result.mappings().one_or_none()
+        return _tenure_view(row) if row is not None else None
 
 
 class SqlSnapshotRepository:
