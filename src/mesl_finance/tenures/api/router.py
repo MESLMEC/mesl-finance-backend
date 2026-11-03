@@ -7,6 +7,7 @@ from typing import Annotated, cast
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from mesl_finance.auth.api.dependencies import current_actor
+from mesl_finance.shared.api.responses import problem_responses
 from mesl_finance.tenures.api.schemas import (
     AssetSnapshotOut,
     CloseTenureOut,
@@ -90,12 +91,26 @@ def _holding_out(view: HoldingSnapshotView) -> HoldingSnapshotOut:
     )
 
 
-@router.post("/tenures/close", status_code=201)
+@router.post(
+    "/tenures/close",
+    status_code=201,
+    summary="Close the tenure, open the next",
+    responses=problem_responses(401, 409, 422),
+)
 async def post_close_tenure(
     body: CloseTenureRequest,
     user: Annotated[str, Depends(current_actor)],
     close_tenure: Annotated[CloseTenure, Depends(get_close_tenure)],
 ) -> CloseTenureOut:
+    """Committee handover in one action (B-25): three things happen in one transaction.
+
+    1. the OPEN tenure locks forever on `close_on` (a date older than the last
+    recorded entry is refused, 409 `rule_violation`);
+    2. member / asset / holding snapshots are written — the reads below;
+    3. the NEXT tenure named `next_name` opens on close_on + 1 and, when the
+    closed one had ledger lines, a carry-over `opening` entry lands in it
+    (db/schema.sql:925-936). Closed tenures never change again (B-18).
+    """
     command = CloseTenureCommand(
         close_on=body.close_on,
         next_name=body.next_name,
@@ -104,36 +119,54 @@ async def post_close_tenure(
     return _close_out(view)
 
 
-@router.get("/tenures/{tenure_id}/member-snapshots")
+@router.get(
+    "/tenures/{tenure_id}/member-snapshots",
+    summary="Member snapshot rows of a tenure",
+    responses=problem_responses(401, 404, 422),
+)
 async def get_member_snapshots(
     tenure_id: int,
     user: Annotated[str, Depends(current_actor)],
     list_snapshots: Annotated[ListMemberSnapshots, Depends(get_list_member_snapshots)],
 ) -> list[MemberSnapshotOut]:
+    """What every member's dues account looked like at handover (member_standing's
+    numbers, `as_of` close date); member-id order. Unknown tenure → 404."""
     views = await list_snapshots(tenure_id, actor=user)
     if views is None:
         raise HTTPException(status_code=404, detail=f"tenure {tenure_id} does not exist")
     return [_member_out(view) for view in views]
 
 
-@router.get("/tenures/{tenure_id}/asset-snapshots")
+@router.get(
+    "/tenures/{tenure_id}/asset-snapshots",
+    summary="Asset snapshot rows of a tenure",
+    responses=problem_responses(401, 404, 422),
+)
 async def get_asset_snapshots(
     tenure_id: int,
     user: Annotated[str, Depends(current_actor)],
     list_snapshots: Annotated[ListAssetSnapshots, Depends(get_list_asset_snapshots)],
 ) -> list[AssetSnapshotOut]:
+    """Every asset's counts at handover (stock/damaged/held/lost/scrapped/exchanged),
+    asset-id order. Unknown tenure → 404."""
     views = await list_snapshots(tenure_id, actor=user)
     if views is None:
         raise HTTPException(status_code=404, detail=f"tenure {tenure_id} does not exist")
     return [_asset_out(view) for view in views]
 
 
-@router.get("/tenures/{tenure_id}/holding-snapshots")
+@router.get(
+    "/tenures/{tenure_id}/holding-snapshots",
+    summary="Holding snapshot rows of a tenure",
+    responses=problem_responses(401, 404, 422),
+)
 async def get_holding_snapshots(
     tenure_id: int,
     user: Annotated[str, Depends(current_actor)],
     list_snapshots: Annotated[ListHoldingSnapshots, Depends(get_list_holding_snapshots)],
 ) -> list[HoldingSnapshotOut]:
+    """Who held what (member x asset x quantity) at handover, pk-order — the
+    lending register. Unknown tenure → 404."""
     views = await list_snapshots(tenure_id, actor=user)
     if views is None:
         raise HTTPException(status_code=404, detail=f"tenure {tenure_id} does not exist")

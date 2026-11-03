@@ -31,6 +31,7 @@ from mesl_finance.assets.domain.asset_activity import AssetActivityRow
 from mesl_finance.assets.domain.asset_event import AssetEvent, AssetEventView
 from mesl_finance.assets.domain.asset_reads import AssetStateRow, WhoHasWhatRow
 from mesl_finance.auth.api.dependencies import current_actor
+from mesl_finance.shared.api.responses import problem_responses
 
 router = APIRouter(tags=["assets"])
 
@@ -135,12 +136,27 @@ def _unknown(asset_id: int) -> HTTPException:
     return HTTPException(status_code=404, detail=f"asset {asset_id} does not exist")
 
 
-@router.post("/assets", status_code=201)
+@router.post(
+    "/assets",
+    status_code=201,
+    summary="Register a tracked asset",
+    responses=problem_responses(401, 409, 422),
+)
 async def post_asset(
     body: CreateAssetRequest,
     user: Annotated[str, Depends(current_actor)],
     create_asset: Annotated[CreateAsset, Depends(get_create_asset)],
 ) -> AssetOut:
+    """Name it and choose the two mode strings (which one is whose job, B-21/B-22).
+
+    `mode` — `individual` (unique things: one row is one unit, e.g. an
+    oscilloscope, tracked by `tag`) or `counted` (quantities: kits and
+    components, "5 in stock"). `ownership` — `admin` = college-provided
+    (their report and the replacement queue care) or `lab` = bought with lab
+    money. Consumables are NEVER registered (B-21). Tag is optional but
+    case-insensitively UNIQUE (409 `unique` naming `assets_tag_unique`). Once
+    events exist, mode/ownership can no longer change (409) — create new.
+    """
     command = CreateAssetCommand(
         name=body.name,
         mode=body.mode.value,
@@ -151,22 +167,34 @@ async def post_asset(
     return _asset_out(await create_asset(command, actor=user))
 
 
-@router.get("/assets")
+@router.get("/assets", summary="List assets", responses=problem_responses(401))
 async def get_assets(
     user: Annotated[str, Depends(current_actor)],
     list_assets: Annotated[ListAssets, Depends(get_list_assets)],
 ) -> list[AssetOut]:
+    """Every asset, id order — records only, no counts; the counts are
+    `/assets/state`."""
     views = await list_assets(actor=user)
     return [_asset_out(view) for view in views]
 
 
-@router.post("/assets/{asset_id}/edit")
+@router.post(
+    "/assets/{asset_id}/edit",
+    summary="Edit asset labels",
+    responses=problem_responses(401, 404, 409, 422),
+)
 async def post_edit(
     asset_id: int,
     body: EditAssetRequest,
     user: Annotated[str, Depends(current_actor)],
     edit_asset: Annotated[EditAsset, Depends(get_edit_asset)],
 ) -> AssetOut:
+    """Partial body; only named fields change; explicit null clears `tag`.
+
+    Note/name/tag cost nothing to change. mode/ownership edits REQUIRE the
+    asset to have no events — the guard blocks them (409 `rule_violation`).
+    Unknown asset 404.
+    """
     command = EditAssetCommand(
         fields=frozenset(body.model_fields_set),
         name=body.name,
@@ -181,13 +209,31 @@ async def post_edit(
     return _asset_out(view)
 
 
-@router.post("/assets/{asset_id}/events", status_code=201)
+@router.post(
+    "/assets/{asset_id}/events",
+    status_code=201,
+    summary="Record an event (acquired, lent, ...)",
+    responses=problem_responses(401, 404, 409, 422),
+)
 async def post_event(
     asset_id: int,
     body: AssetEventRequest,
     user: Annotated[str, Depends(current_actor)],
     record_asset_event: Annotated[RecordAssetEvent, Depends(get_record_asset_event)],
 ) -> AssetEventOut:
+    """The asset's story in kinds: `acquired, lent, returned, damaged, lost,
+    repaired, scrapped, exchanged, correction`.
+
+    Kind shapes validated APP-SIDE as 422 `validation_failed` (D-131):
+    `source` only on acquired, `member_id` only on lend-family kinds
+    (for a project, use a member as the borrower with a note, B-23), damaged/
+    lost NEED a note — cause is free text (B-24). Links: a `purchase`
+    acquisition MUST name its `ledger_transaction_id` (the payment recorded
+    first under /expenses; D-163). What the database judges (not enough in
+    stock, over-return, individual asset exists once / moves one unit at a
+    time, pre-tenure date) is 409 with its own message. Returns the event;
+    counts are `/assets/state`.
+    """
     # The kind shapes are the app's 422 `validation_failed` refusals (Q5=a):
     # validated here, before any transaction opens.
     AssetEvent.create(
@@ -215,7 +261,12 @@ async def post_event(
     return _event_out(view)
 
 
-@router.post("/assets/{asset_id}/events/{event_id}/fix", status_code=201)
+@router.post(
+    "/assets/{asset_id}/events/{event_id}/fix",
+    status_code=201,
+    summary="Fix one event (reversal + replacement)",
+    responses=problem_responses(401, 404, 409, 422),
+)
 async def post_fix_event(
     asset_id: int,
     event_id: int,
@@ -223,6 +274,14 @@ async def post_fix_event(
     user: Annotated[str, Depends(current_actor)],
     fix_asset_event: Annotated[FixAssetEvent, Depends(get_fix_asset_event)],
 ) -> FixEventOut:
+    """Correct a WRONGLY-RECORDED event: reversal mirrors the original, the
+    replacement carries new `{quantity, occurred_on, note}` — ONE transaction.
+
+    Works on all nine kinds; a negative replacement quantity is only legal on
+    a `correction` (the CHECK decides, db/schema.sql:677). Unknown event or
+    event under another asset: 404 with BOTH ids in the detail. A second fix
+    of the same event is 409 `unique` on `reverses_id`.
+    """
     command = FixEventCommand(
         asset_id=asset_id,
         event_id=event_id,
@@ -250,39 +309,73 @@ async def post_fix_event(
     )
 
 
-@router.get("/assets/state")
+@router.get(
+    "/assets/state",
+    summary="Every asset and its counts",
+    responses=problem_responses(401),
+)
 async def get_asset_state(
     user: Annotated[str, Depends(current_actor)],
     list_asset_state: Annotated[ListAssetState, Depends(get_list_asset_state)],
 ) -> list[AssetStateOut]:
+    """The `asset_state` rows (name order): stock, damaged, with_members (lends held by
+    members), lost, scrapped, exchanged — the raw numbers the admin report is
+    built from (B-22). Zero-count assets still list."""
     rows = await list_asset_state(actor=user)
     return [_state_out(row) for row in rows]
 
 
-@router.get("/assets/holdings")
+@router.get(
+    "/assets/holdings",
+    summary="Who holds what",
+    responses=problem_responses(401),
+)
 async def get_asset_holdings(
     user: Annotated[str, Depends(current_actor)],
     list_who_has_what: Annotated[ListWhoHasWhat, Depends(get_list_who_has_what)],
 ) -> list[WhoHasWhatOut]:
+    """Open loans only (`who_has_what`, member/asset name order): rows disappear
+    when everything is returned, so this IS the live lending register (B-23)."""
     rows = await list_who_has_what(actor=user)
     return [_holding_out(row) for row in rows]
 
 
-@router.get("/assets/replacement-queue")
+@router.get(
+    "/assets/replacement-queue",
+    summary="Admin-provided damaged items",
+    responses=problem_responses(401),
+)
 async def get_replacement_queue(
     user: Annotated[str, Depends(current_actor)],
     list_replacement_queue: Annotated[ListReplacementQueue, Depends(get_list_replacement_queue)],
 ) -> list[AssetStateOut]:
+    """The queue for the regular admin report (B-21/B-24): `ownership="admin"`
+    AND damaged > 0 — the lab's own damaged kit does not belong here. Rows are
+    full `asset_state` rows."""
     rows = await list_replacement_queue(actor=user)
     return [_state_out(row) for row in rows]
 
 
-@router.get("/assets/activity")
+@router.get(
+    "/assets/activity",
+    summary="Admin-report movement numbers",
+    responses=problem_responses(401, 422),
+)
 async def get_asset_activity(
     from_date: date,
     to_date: date,
     user: Annotated[str, Depends(current_actor)],
     list_asset_activity: Annotated[ListAssetActivity, Depends(get_list_asset_activity)],
 ) -> list[AssetActivityOut]:
+    """New vs old vs exchanged units in a window (`asset_activity`), for the
+    college admin's report (B-22).
+
+    Both dates required; the window is INCLUSIVE and order-insensitive (a
+    reversed window answers [], not 422 — D-139). Rows carry
+    `{asset_name, ownership, kind, source, units, events}` in the function's
+    own order (name, then kind enum order); fixes count ONCE — as their
+    replacements (`asset_events_current`). JSON rows only: the CSV/report is
+    built by you (D-012).
+    """
     rows = await list_asset_activity(from_date, to_date, actor=user)
     return [_activity_out(row) for row in rows]

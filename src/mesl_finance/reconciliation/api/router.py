@@ -24,6 +24,7 @@ from mesl_finance.reconciliation.domain.reconciliation_reads import (
     ReconciliationStatusView,
     UnverifiedEntryView,
 )
+from mesl_finance.shared.api.responses import problem_responses
 
 router = APIRouter(tags=["reconciliation"])
 
@@ -55,12 +56,28 @@ def _out(view: ReconciliationView) -> ReconcileOut:
     )
 
 
-@router.post("/reconciliations", status_code=201)
+@router.post(
+    "/reconciliations",
+    status_code=201,
+    summary="Record a screen-vs-notes check",
+    responses=problem_responses(401, 409, 422),
+)
 async def post_reconciliation(
     body: ReconcileRequest,
     user: Annotated[str, Depends(current_actor)],
     reconcile: Annotated[Reconcile, Depends(get_reconcile)],
 ) -> ReconcileOut:
+    """You counted what the lab actually holds; this stores it (B-20).
+
+    `{counted_total, note="", counted={"<envelope_id>": int} | null}` —
+    `reconcile` (SECURITY DEFINER, db/schema.sql:1047-1087) compares your
+    counts with the system, stores the attempt and moves the review window
+    forward when it MATCHES: before any match, every entry is unverified;
+    after it, only what came later needs a look. Mismatches are stored too
+    (difference ≠ 0 is the reviewer's point). The schema owns everything not
+    typed: negative totals, unknown counted envelopes, `nothing to reconcile
+    yet` → 409 with the rule's own message.
+    """
     command = ReconcileCommand(
         counted_total=body.counted_total,
         note=body.note,
@@ -112,28 +129,56 @@ def _suspect_out(view: DifferenceSuspectView) -> DifferenceSuspectOut:
     )
 
 
-@router.get("/reconciliation-status")
+@router.get(
+    "/reconciliation-status",
+    summary="Where the checks stand",
+    responses=problem_responses(401),
+)
 async def read_reconciliation_status(
     user: Annotated[str, Depends(current_actor)],
     get_status: Annotated[GetReconciliationStatus, Depends(get_get_reconciliation_status)],
 ) -> ReconciliationStatusOut:
+    """One row, always there: when the last MATCH was, how many entries and
+    days have passed since, and what the LATEST attempt (matched or not) said.
+    All last-match fields are null before any check (D-146 (3))."""
     return _status_out(await get_status(actor=user))
 
 
-@router.get("/unverified-entries")
+@router.get(
+    "/unverified-entries",
+    summary="Entries recorded since the last match",
+    responses=problem_responses(401),
+)
 async def read_unverified_entries(
     user: Annotated[str, Depends(current_actor)],
     list_unverified: Annotated[ListUnverifiedEntries, Depends(get_list_unverified_entries)],
 ) -> list[UnverifiedEntryOut]:
+    """The reviewer's queue (B-20): exactly what a match does NOT cover yet.
+
+    The window is by ENTRY ID, not date — a late entry for an old date still
+    shows (D-146 (4)). Each row is the `unverified_entries` view's 14 columns
+    including `reverses_id` and `is_voided`, with `net_effect` and `size`.
+    """
     return [_entry_out(view) for view in await list_unverified(actor=user)]
 
 
-@router.get("/difference-suspects")
+@router.get(
+    "/difference-suspects",
+    summary="Guess which entry explains a difference",
+    responses=problem_responses(401, 422),
+)
 async def read_difference_suspects(
     difference: int,
     user: Annotated[str, Depends(current_actor)],
     list_suspects: Annotated[ListDifferenceSuspects, Depends(get_list_difference_suspects)],
     envelope_id: int | None = None,
 ) -> list[DifferenceSuspectOut]:
+    """For a difference you cannot place: name candidates + WHY (D-146 (5)).
+
+    `?difference=<your mismatch>` is called required; add optional
+    `?envelope_id=` when you suspect one envelope. The heuristics — an extra
+    zero, swapped digits, a single-sided transfer that exactly fills the gap
+    — name `entry_id` + `effect` + `why`. No hits is `[]`, not an error.
+    """
     views = await list_suspects(difference, envelope_id, actor=user)
     return [_suspect_out(view) for view in views]

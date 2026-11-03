@@ -123,7 +123,7 @@ def _export_openapi() -> Any:
     return vars(_exporter_module())["export_openapi"]
 
 
-def _schema_only_settings() -> Settings:
+def schema_only_settings() -> Settings:
     """Settings good enough to construct the app: exporting never opens a connection."""
     return Settings(
         database_url="postgresql+asyncpg://labapp:change-me@localhost:5432/mesl",
@@ -149,9 +149,12 @@ def test_export_writes_the_documents_fastapi_builds(tmp_path: Path) -> None:
     _export_openapi()(destination)
 
     document = json.loads(destination.read_text(encoding="utf-8"))
-    assert document == create_app(_schema_only_settings()).openapi()
+    assert document == create_app(schema_only_settings()).openapi()
     assert document["openapi"] == OPENAPI_VERSION
-    assert document["info"] == {"title": TITLE, "version": VERSION}
+    assert document["info"]["title"] == TITLE
+    assert document["info"]["version"] == VERSION
+    # issue #12: the generated document carries a human overview
+    assert document["info"]["description"]
     assert sorted(_operations(document)) == EXPECTED_OPERATIONS
 
 
@@ -200,4 +203,7 @@ def test_the_committed_document_carries_every_current_operation() -> None:
 
     assert sorted(_operations(document)) == EXPECTED_OPERATIONS
     assert document["openapi"] == OPENAPI_VERSION
-    assert document["info"] == {"title": TITLE, "version": VERSION}
+    assert document["info"]["title"] == TITLE
+    assert document["info"]["version"] == VERSION
+    # issue #12: the committed document carries the human overview
+    assert document["info"]["description"]

@@ -94,6 +94,133 @@ from mesl_finance.tenures.infrastructure.unit_of_work import SqlTenureUnitOfWork
 
 API_PREFIX = "/api/v1"
 
+# The guide (issue #12). Everything below surfaces through the generated
+# `docs/openapi.json` into `/docs` (Swagger, try things) and `/redoc` (ReDoc,
+# read it). The words are cites: rules live in db/schema.sql and DECISIONS.md.
+OVERVIEW = """MESL Finance: the money, members, fees and assets of the lab.
+PostgreSQL owns every rule (db/schema.sql); these endpoints call them in one
+transaction each and translate what they refuse — nothing here invents a rule.
+
+The money in one breath:
+- Every income lands first in the envelope named "Unallocated General" (the pool):
+  `POST /envelopes` never creates it (the bootstrap does) and `POST /deposits`
+  without `envelope_id` is where it goes.
+- The committee then splits the pool with `POST /allocation-suggestion` (dry run)
+  and `POST /allocations` (the real split).
+- Members owe weekly fees (B-05): `POST /deposits` with `source="weekly_fee"`
+  and the member id; refunds go back out through `POST /refunds` — both move
+  only the pool.
+- An event or project tracks its own money through a cost center:
+  in via deposits/expenses with `cost_center_id`, watched at
+  `GET /cost-centers/{id}/summary`, leftovers swept back with `POST /sweeps`
+  (B-16).
+- Month end: `GET /dues` is who owes what; `POST /reconciliations` records the
+  pocket-notes count, `GET /reconciliation-status` / `/unverified-entries` /
+  `/difference-suspects` say what still needs a look (B-20). `GET /health`
+  runs the database's own integrity checks.
+- When a committee hands over, `POST /tenures/close` locks the closed tenure,
+  writes the snapshots and opens the next one (B-18/B-25).
+
+Rules you would otherwise think are bugs:
+- **Money amounts are immutable** — no entry is ever updated or deleted
+  (db/schema.sql: append-only + checksums). A wrong amount is CORRECTED, not
+  edited: the fix/`fix-amount` endpoints write a reversal plus a replacement in
+  one transaction; labels (note, tag, source, date...) stay editable through
+  the `edit-labels` action, and every old value is kept in the history tables.
+- Every error everywhere is RFC 9457 problem+json: `{code, detail, status,
+  title, type}` — the `code` is machine-readable ("rule_violation" means
+  PostgreSQL refused; "unknown_reference" names a dead pointer).
+- Envelope/cost-center/member lists are id-ordered and never carry computed
+  balances; balances are ledger reads.
+
+Read `/redoc` for the per-feature walkthroughs summarized under each tag.
+"""
+
+OPENAPI_TAGS = [
+    {
+        "name": "auth",
+        "description": "Log in. The treasurer's username/password come from server settings"
+        " (D-006); the bearer JWT they return is accepted by every other route",
+    },
+    {
+        "name": "ledger",
+        "description": "The money ledger: deposits in, expenses out, transfers between"
+        " envelopes, and the corrections (fix-amount, edit-labels). MONEY IS IMMUTABLE"
+        " (D-080/B-18): fix-amount writes a reversal + a replacement in ONE transaction —"
+        " there is no edit or delete endpoint, by design. `GET /entries` lists the current"
+        " truth (fixed entries collapse into one line); it carries NO amounts on purpose"
+        " (db/schema.sql:426-430)",
+    },
+    {
+        "name": "envelopes",
+        "description": 'Where money may sit. The pool is named "Unallocated General" and is'
+        " created by the first-start bootstrap, never here (D-041); every other envelope maps"
+        " a purpose: member projects, lab projects, events, competitions, research, admin"
+        " (B-15). Cap + priority are allocation inputs (D-021): the suggestion and "
+        "`POST /allocations` fill capped envelopes first by priority, the rest by the"
+        " previous session's shares. `deactivate` only works at zero balance",
+    },
+    {
+        "name": "cost-centers",
+        "description": "One cost center per event, member project, lab project or competition;"
+        " tag money with it as it moves (ledger's `cost_center_id`). The summary shows in/out/"
+        "swept/leftover; at an event's end the leftover is swept back to the pool (B-16/B-17)"
+        " — no overspend warnings exist on purpose. Kind is fixed at create",
+    },
+    {
+        "name": "members",
+        "description": "Who belongs to the lab, membership periods (start once, end once), and"
+        " the ledger-side adjustments: waivers (owed week excused), credit donations, opening"
+        " balances, corrections. Periods overlap nothing: two open periods are refused"
+        " (db/schema.sql:101-102). No auto-expulsion exists (B-09) — dues show raw numbers",
+    },
+    {
+        "name": "fees",
+        "description": "The weekly rate (per member, whole BDT; a rate change only affects"
+        " future weeks, B-05), shutdown weeks (a national-vacation range that forgives whole"
+        " weeks, B-08 — undo a mistake by re-entering the same range with `is_shutdown=false`,"
+        " newest row wins), and `GET /dues`: every member, what they owe, credits, and when"
+        " arrears started. A member's fee payment is a deposit with source `weekly_fee`"
+        " (ledger tag)",
+    },
+    {
+        "name": "assets",
+        "description": "What the lab owns and holds. Choose: mode `individual` = one unit per"
+        " row (a device, a multimeter serial by tag), mode `counted` = a quantity per row"
+        " (kits, components); `ownership` admin = came from the college admin (their damaged"
+        " items queue for replacement, `/replacement-queue`), lab = lab money bought it"
+        " (db/schema.sql:639-640). Consumables are never tracked (B-21). RECORDING A"
+        " PURCHASE: record the expense first (`POST /expenses`), then the acquisition"
+        " (kind `acquired`, source `purchase`) must name that payment in"
+        " `ledger_transaction_id` — that link is the item's only cost record (D-163,"
+        " db/schema.sql 0002). A lent/lost/damaged event names who had it (member_id),"
+        " damage needs a note (db/schema.sql rules), lend-to-nothing is refused. Fix an"
+        " event via `/events/{event_id}/fix` (reversal + replacement), never an edit",
+    },
+    {
+        "name": "health",
+        "description": "The database's self-check (`verify_all`): an empty `[]` means healthy,"
+        " problem strings otherwise. Bearer token required: it exposes money detail",
+    },
+    {
+        "name": "reconciliation",
+        "description": "Month-end check that pocket notes and the machine agree (B-20)."
+        " Count what you hold per envelope, `POST /reconciliations` — matched/answer says"
+        " pass or difference. After a match, `/unverified-entries` shrinks to what came"
+        " since; `/difference-suspects` guesses which entry explains a difference (the"
+        " basics: an extra zero, swapped digits, a same-amount transfer). Entries before"
+        " the last match never need review, and nothing to reconcile yet is refused (B-20)",
+    },
+    {
+        "name": "tenures",
+        "description": "Committee handover (B-25): `POST /tenures/close` closes the open"
+        " tenure on close_on (never before the last entry), writes member/asset/holding"
+        " snapshots, opens the NEXT tenure named `next_name` on close_on+1, and carries"
+        " balances over as an `opening` entry. The closed tenure is locked forever"
+        " (B-18); the snapshots are the handover register",
+    },
+]
+
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """App factory. Run:  uvicorn --app-dir src mesl_finance.main:create_app --factory"""
@@ -108,7 +235,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await engine.dispose()
 
-    app = FastAPI(title="MESL Finance", lifespan=lifespan)
+    app = FastAPI(
+        title="MESL Finance",
+        lifespan=lifespan,
+        description=OVERVIEW,
+        openapi_tags=OPENAPI_TAGS,
+    )
     app.state.engine = engine
     app.state.token_service = tokens
     app.state.login = Login(
