@@ -12,6 +12,12 @@ D-076/D-079/D-082/D-086/D-088/D-090):
   stay private and ``corrected_from`` is that ``replaces_id``
   (db/schema.sql:426-430).
 - Q3=a the list carries no amounts: ``entries_current`` has none.
+  SUPERSEDED by issue #5: each item now also carries ``lines``
+  (``[{"envelope_id", "amount"}]``, signed, ordered by ``envelope_id``),
+  ``net_effect`` and ``size`` — the exact formula ``unverified_entries`` uses
+  (db/schema.sql:1099-1101). Opening entries carry their lines like every
+  other kind. Recorded as a new decision at wrapup (origin + blame pointer:
+  issue #5).
 - Q10=a an unknown ``tenure_id`` is an empty list, not a 404.
 - Q9=a 6.7 adds no single-entry read route.
 
@@ -39,8 +45,12 @@ ENTRY_KEYS = {
     "member_id",
     "source",
     "corrected_from",
+    # Issue #5: amounts come back per line plus the two totals (db/schema.sql:1099-1101).
+    "lines",
+    "net_effect",
+    "size",
 }
-POOL, EVENTS = 1, 2
+POOL, EVENTS, ADMIN = 1, 2, 3
 
 
 def assert_problem(response: Any, status: int, code: str) -> None:
@@ -296,3 +306,160 @@ async def test_an_opening_entry_is_listed(
     item = listed[0]
     assert (item["id"], item["kind"], item["source"]) == (opening_id, "opening", None)
     assert item["corrected_from"] is None
+
+
+async def allocate(client: AsyncClient, auth: dict[str, str], amounts: dict[str, int]) -> None:
+    response = await client.post(
+        "/api/v1/allocations",
+        json={"occurred_on": "2026-02-04", "note": "monthly allocation", "amounts": amounts},
+        headers=auth,
+    )
+    assert response.status_code == 201
+
+
+async def test_a_deposit_lists_one_positive_line(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    entry_id = await deposit(client, auth, amount=500)
+
+    listed = await entries(client, auth)
+
+    item = next(row for row in listed if row["id"] == entry_id)
+    assert item["lines"] == [{"envelope_id": POOL, "amount": 500}]
+    assert (item["net_effect"], item["size"]) == (500, 500)
+
+
+async def test_an_expense_lists_one_negative_line(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    await deposit(client, auth)
+    entry_id = await spend(client, auth)
+
+    listed = await entries(client, auth)
+
+    item = next(row for row in listed if row["id"] == entry_id)
+    assert item["lines"] == [{"envelope_id": POOL, "amount": -100}]
+    assert (item["net_effect"], item["size"]) == (-100, 100)
+
+
+async def test_a_transfer_lists_both_signed_lines_in_envelope_id_order(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    await deposit(client, auth)
+    transfer_id = await move(client, auth)
+
+    listed = await entries(client, auth)
+
+    item = next(row for row in listed if row["id"] == transfer_id)
+    assert item["lines"] == [
+        {"envelope_id": POOL, "amount": -50},
+        {"envelope_id": EVENTS, "amount": 50},
+    ]
+    assert (item["net_effect"], item["size"]) == (0, 50)
+
+
+async def test_a_multi_line_allocation_lists_every_line(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    await deposit(client, auth, amount=500)
+    await allocate(client, auth, {str(EVENTS): 200, str(ADMIN): 300})
+
+    listed = await entries(client, auth)
+
+    item = next(row for row in listed if row["kind"] == "transfer")
+    assert item["tag"] == "allocation"
+    assert item["lines"] == [
+        {"envelope_id": POOL, "amount": -500},
+        {"envelope_id": EVENTS, "amount": 200},
+        {"envelope_id": ADMIN, "amount": 300},
+    ]
+    assert (item["net_effect"], item["size"]) == (0, 500)
+
+
+async def test_a_fixed_amount_lists_only_the_replacement_line(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    original_id = await deposit(client, auth, amount=100)
+    fixed = await client.post(
+        f"/api/v1/entries/{original_id}/fix-amount",
+        json={"amount": 80, "occurred_on": "2026-02-05", "note": "amount typo"},
+        headers=auth,
+    )
+    assert fixed.status_code == 201
+
+    listed = await entries(client, auth)
+
+    assert len(listed) == 1
+    item = listed[0]
+    assert item["lines"] == [{"envelope_id": POOL, "amount": 80}]
+    assert (item["net_effect"], item["size"]) == (80, 80)
+
+
+async def test_a_label_edit_leaves_the_lines_untouched(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    entry_id = await deposit(client, auth, amount=250)
+    before = await entries(client, auth)
+    assert before[0]["lines"] == [{"envelope_id": POOL, "amount": 250}]
+    edited = await client.post(
+        f"/api/v1/entries/{entry_id}/edit-labels",
+        json={"tag": "fees"},
+        headers=auth,
+    )
+    assert edited.status_code == 200
+
+    listed = await entries(client, auth)
+
+    assert len(listed) == 1
+    assert listed[0]["lines"] == [{"envelope_id": POOL, "amount": 250}]
+    assert (listed[0]["net_effect"], listed[0]["size"]) == (250, 250)
+
+
+async def test_a_carry_over_opening_lists_its_lines(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    # Only ONE tenure may be open at a time (db/schema.sql:40); close_tenure carries the
+    # closing balances into the next tenure as the opening entry's lines.
+    await deposit(client, auth, amount=300)
+    await lab.owner.execute("SELECT close_tenure('2026-12-31', $1, '2027')", USERNAME)
+
+    listed = await entries(client, auth, tenure_id=2)
+
+    assert len(listed) == 1
+    item = listed[0]
+    assert (item["kind"], item["corrected_from"]) == ("opening", None)
+    assert item["lines"] == [{"envelope_id": POOL, "amount": 300}]
+    assert (item["net_effect"], item["size"]) == (300, 300)
+
+
+async def test_the_tenure_filter_still_applies_with_lines(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    first_tenure_id = await deposit(client, auth, amount=300)
+    await lab.owner.execute("SELECT close_tenure('2026-12-31', $1, '2027')", USERNAME)
+    opening_id = int(
+        await lab.owner.fetchval(
+            "SELECT id FROM ledger_transactions WHERE tenure_id = 2 AND kind = 'opening'"
+        )
+    )
+    second_tenure_id = await insert_entry(
+        lab, 2, "deposit", date(2027, 1, 5), amount=50, source="other"
+    )
+
+    tenure_one = await entries(client, auth, tenure_id=1)
+    assert [(row["id"], row["lines"], row["net_effect"], row["size"]) for row in tenure_one] == [
+        (first_tenure_id, [{"envelope_id": POOL, "amount": 300}], 300, 300)
+    ]
+
+    tenure_two = await entries(client, auth, tenure_id=2)
+    assert [(row["id"], row["kind"], row["lines"]) for row in tenure_two] == [
+        (opening_id, "opening", [{"envelope_id": POOL, "amount": 300}]),
+        (second_tenure_id, "deposit", [{"envelope_id": POOL, "amount": 50}]),
+    ]
+
+    everything = await entries(client, auth)
+    assert {row["id"] for row in everything} == {
+        first_tenure_id,
+        opening_id,
+        second_tenure_id,
+    }

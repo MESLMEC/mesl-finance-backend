@@ -20,8 +20,22 @@ class ListEntriesQuery:
 
 
 @dataclass(frozen=True)
+class EntryLine:
+    """One signed line of an entry (issue #5). Amount is whole BDT, signed."""
+
+    envelope_id: int
+    amount: int
+
+
+@dataclass(frozen=True)
 class EntryView:
-    """One row of ``entries_current``, as the API returns it (step 6.7 Q2=a)."""
+    """One row of ``entries_current`` with its lines and totals, as the API
+    returns it (step 6.7 Q2=a; amounts added by issue #5).
+
+    ``lines`` arrives sorted by ``envelope_id``; ``net_effect``/``size`` are
+    PostgreSQL's ``unverified_entries`` pair (db/schema.sql:1099-1101), so a
+    transfer's ``net_effect`` is 0 while ``size`` says how much moved.
+    """
 
     id: int
     tenure_id: int
@@ -35,3 +49,6 @@ class EntryView:
     member_id: int | None
     source: IncomeSource | None
     corrected_from: int | None
+    lines: tuple[EntryLine, ...]
+    net_effect: int
+    size: int

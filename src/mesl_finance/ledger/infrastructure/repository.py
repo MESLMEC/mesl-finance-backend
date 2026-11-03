@@ -2,7 +2,7 @@ from typing import Any
 
 from mesl_finance.ledger.domain.deposit import Deposit
 from mesl_finance.ledger.domain.entry import EntryKind, IncomeSource
-from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
+from mesl_finance.ledger.domain.entry_list import EntryLine, EntryView, ListEntriesQuery
 from mesl_finance.ledger.domain.expense import Expense
 from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
@@ -374,22 +374,34 @@ class SqlLedgerRepository:
         )
 
     async def list_entries(self, query: ListEntriesQuery) -> list[EntryView]:
-        """The treasurer's list: `entries_current`, optionally one tenure.
+        """The treasurer's list: `entries_current` WITH its lines and totals.
 
         The view already hides reversals and voided originals and exposes
-        `replaces_id` as `corrected_from` (db/schema.sql:426-430); this read
-        only filters and orders. No amounts: the view has none (step 6.7 Q3=a).
+        `replaces_id` as `corrected_from` (db/schema.sql:426-430); the money
+        itself lives in `ledger_lines` (db/schema.sql:266-272). `net_effect`/
+        `size` use the view pair's own formula (db/schema.sql:1099-1101) as
+        window aggregates, and rows are grouped by entry in Python. `check_shape`
+        (db/schema.sql:348) guarantees an entry has at least one line, so the
+        inner JOIN loses nothing.
         """
         rows = (
             (
                 await self._uow.execute(
                     """
-                SELECT id, tenure_id, kind, occurred_on, recorded_at, recorded_by,
-                       note, tag, cost_center_id, member_id, source, corrected_from
-                  FROM entries_current
+                SELECT x.id, x.tenure_id, x.kind, x.occurred_on, x.recorded_at, x.recorded_by,
+                       x.note, x.tag, x.cost_center_id, x.member_id, x.source, x.corrected_from,
+                       coalesce(sum(l.amount) OVER entry_lines, 0)::int AS net_effect,
+                       greatest(
+                           coalesce(sum(l.amount) FILTER (WHERE l.amount > 0) OVER entry_lines, 0),
+                           -coalesce(sum(l.amount) FILTER (WHERE l.amount < 0) OVER entry_lines, 0)
+                       )::int AS size,
+                       l.envelope_id, l.amount
+                  FROM entries_current x
+                  JOIN ledger_lines l ON l.transaction_id = x.id
                  WHERE CAST(:tenure_id AS bigint) IS NULL
-                    OR tenure_id = CAST(:tenure_id AS bigint)
-                 ORDER BY id
+                    OR x.tenure_id = CAST(:tenure_id AS bigint)
+                WINDOW entry_lines AS (PARTITION BY x.id)
+                 ORDER BY x.id, l.envelope_id
                 """,
                     {"tenure_id": query.tenure_id},
                 )
@@ -397,20 +409,32 @@ class SqlLedgerRepository:
             .mappings()
             .all()
         )
+        # Rows arrive ordered by entry id, then envelope id: one entry's lines
+        # are contiguous, and `lines` keeps that envelope-id order.
+        grouped: list[tuple[Any, list[EntryLine]]] = []
+        for row in rows:
+            line = EntryLine(envelope_id=row["envelope_id"], amount=row["amount"])
+            if grouped and grouped[-1][0]["id"] == row["id"]:
+                grouped[-1][1].append(line)
+            else:
+                grouped.append((row, [line]))
         return [
             EntryView(
-                id=row["id"],
-                tenure_id=row["tenure_id"],
-                kind=EntryKind(row["kind"]),
-                occurred_on=row["occurred_on"],
-                recorded_at=row["recorded_at"],
-                recorded_by=row["recorded_by"],
-                note=row["note"],
-                tag=row["tag"],
-                cost_center_id=row["cost_center_id"],
-                member_id=row["member_id"],
-                source=IncomeSource(row["source"]) if row["source"] is not None else None,
-                corrected_from=row["corrected_from"],
+                id=header["id"],
+                tenure_id=header["tenure_id"],
+                kind=EntryKind(header["kind"]),
+                occurred_on=header["occurred_on"],
+                recorded_at=header["recorded_at"],
+                recorded_by=header["recorded_by"],
+                note=header["note"],
+                tag=header["tag"],
+                cost_center_id=header["cost_center_id"],
+                member_id=header["member_id"],
+                source=IncomeSource(header["source"]) if header["source"] is not None else None,
+                corrected_from=header["corrected_from"],
+                lines=tuple(lines),
+                net_effect=header["net_effect"],
+                size=header["size"],
             )
-            for row in rows
+            for header, lines in grouped
         ]

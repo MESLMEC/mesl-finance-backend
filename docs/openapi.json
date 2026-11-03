@@ -1362,6 +1362,27 @@
         "title": "EntryLabelsOut",
         "type": "object"
       },
+      "EntryLineOut": {
+        "description": "One signed line of an entry (issue #5).",
+        "properties": {
+          "amount": {
+            "description": "Whole BDT, signed: negative takes money from the envelope, positive adds",
+            "title": "Amount",
+            "type": "integer"
+          },
+          "envelope_id": {
+            "description": "The envelope the line touches",
+            "title": "Envelope Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "envelope_id",
+          "amount"
+        ],
+        "title": "EntryLineOut",
+        "type": "object"
+      },
       "EntryOut": {
         "properties": {
           "corrected_from": {
@@ -1397,6 +1418,14 @@
             "$ref": "#/components/schemas/EntryKind",
             "description": "The entry's kind"
           },
+          "lines": {
+            "description": "The entry's signed lines, ordered by envelope id (issue #5)",
+            "items": {
+              "$ref": "#/components/schemas/EntryLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
           "member_id": {
             "anyOf": [
               {
@@ -1408,6 +1437,11 @@
             ],
             "description": "Set for weekly fee payments and refunds",
             "title": "Member Id"
+          },
+          "net_effect": {
+            "description": "The sum of the entry's lines; a transfer/sweep/allocation nets to 0",
+            "title": "Net Effect",
+            "type": "integer"
           },
           "note": {
             "description": "The current note",
@@ -1430,6 +1464,11 @@
             "description": "Investing treasurer \u2014 the JWT subject",
             "title": "Recorded By",
             "type": "string"
+          },
+          "size": {
+            "description": "How much money moved: greatest(sum of positive lines, -sum of negative lines)",
+            "title": "Size",
+            "type": "integer"
           },
           "source": {
             "anyOf": [
@@ -1472,7 +1511,10 @@
           "cost_center_id",
           "member_id",
           "source",
-          "corrected_from"
+          "corrected_from",
+          "lines",
+          "net_effect",
+          "size"
         ],
         "title": "EntryOut",
         "type": "object"
@@ -6194,7 +6236,7 @@
     },
     "/api/v1/entries": {
       "get": {
-        "description": "The treasurer's list: every CURRENT entry, id order, NO amounts (6.7 Q3).\n\nFrom `entries_current` (db/schema.sql:426-430): a fixed amount shows as\nONE line (the replacement, `corrected_from` naming the original);\nreversals and voided originals are hidden. Filter: optional\n`?tenure_id=`; an unknown id is `[]`, not 404.",
+        "description": "The treasurer's list: every CURRENT entry with its signed `lines`,\n`net_effect` and `size` (issue #5), id order.\n\nFrom `entries_current` (db/schema.sql:426-430): a fixed amount shows as\nONE line (the replacement, `corrected_from` naming the original);\nreversals and voided originals are hidden. A transfer/sweep/allocation\ncarries `net_effect: 0` \u2014 `size` is the amount that moved. Filter:\noptional `?tenure_id=`; an unknown id is `[]`, not 404.",
         "operationId": "get_entries_api_v1_entries_get",
         "parameters": [
           {

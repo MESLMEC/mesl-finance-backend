@@ -7,6 +7,7 @@ from mesl_finance.ledger.api.schemas import (
     DepositRequest,
     EntryCreated,
     EntryLabelsOut,
+    EntryLineOut,
     EntryOut,
     ExpenseCreated,
     ExpenseRequest,
@@ -245,6 +246,11 @@ def _entry_out(view: EntryView) -> EntryOut:
         member_id=view.member_id,
         source=view.source,
         corrected_from=view.corrected_from,
+        lines=[
+            EntryLineOut(envelope_id=line.envelope_id, amount=line.amount) for line in view.lines
+        ],
+        net_effect=view.net_effect,
+        size=view.size,
     )
 
 
@@ -258,12 +264,14 @@ async def get_entries(
     list_entries: Annotated[ListEntries, Depends(get_list_entries)],
     tenure_id: int | None = None,
 ) -> list[EntryOut]:
-    """The treasurer's list: every CURRENT entry, id order, NO amounts (6.7 Q3).
+    """The treasurer's list: every CURRENT entry with its signed `lines`,
+    `net_effect` and `size` (issue #5), id order.
 
     From `entries_current` (db/schema.sql:426-430): a fixed amount shows as
     ONE line (the replacement, `corrected_from` naming the original);
-    reversals and voided originals are hidden. Filter: optional
-    `?tenure_id=`; an unknown id is `[]`, not 404.
+    reversals and voided originals are hidden. A transfer/sweep/allocation
+    carries `net_effect: 0` — `size` is the amount that moved. Filter:
+    optional `?tenure_id=`; an unknown id is `[]`, not 404.
     """
     views = await list_entries(ListEntriesQuery(tenure_id=tenure_id), actor=user)
     return [_entry_out(view) for view in views]

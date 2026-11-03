@@ -12,8 +12,12 @@ D-076/D-079/D-082/D-086/D-088/D-090):
   in this step.
 - Q3=a the read model carries no amounts: ``entries_current`` has none
   (db/schema.sql:426-430).
+  SUPERSEDED by issue #5: the read model also carries ``lines`` (one entry
+  per line of the ledger, signed), ``net_effect`` and ``size`` — the use case
+  itself stays a passthrough; the amounts come from the repository.
 """
 
+from datetime import date, datetime
 from importlib import import_module
 from types import ModuleType, TracebackType
 from typing import Any, Self
@@ -110,3 +114,40 @@ async def test_the_actor_is_the_transaction_actor() -> None:
     await _list_class()(_factory(uows))(query(), actor="treasurer")
 
     assert [uow.actor for uow in uows] == ["treasurer"]
+
+
+async def test_the_read_model_carries_lines_and_the_two_totals() -> None:
+    # Issue #5: the read model gains the signed lines and the two totals; the use
+    # case returns the repository's rows unchanged. The lazy `vars(mod)[name]`
+    # lookup keeps the whole file importable while `EntryLine` does not exist yet.
+    dom: ModuleType = _module("mesl_finance.ledger.domain.entry_list")
+    line = vars(dom)["EntryLine"](envelope_id=1, amount=500)
+    view = vars(dom)["EntryView"](
+        id=1,
+        tenure_id=1,
+        kind="deposit",
+        occurred_on=date(2026, 2, 1),
+        recorded_at=datetime(2026, 2, 1, 10, 0),
+        recorded_by="treasurer",
+        note="",
+        tag=None,
+        cost_center_id=None,
+        member_id=None,
+        source=None,
+        corrected_from=None,
+        lines=(line,),
+        net_effect=500,
+        size=500,
+    )
+    ledger = FakeLedger()
+    ledger.result = [view]
+    uow = FakeUow("treasurer", ledger)
+
+    def factory(_actor: str) -> FakeUow:
+        return uow
+
+    views = await _list_class()(factory)(query(), actor="treasurer")
+
+    assert views is ledger.result
+    assert len(ledger.queries) == 1
+    assert not uow.committed

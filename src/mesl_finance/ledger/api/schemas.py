@@ -139,6 +139,15 @@ class EntryLabelsOut(BaseModel):
     source: IncomeSource | None = Field(description="Deposits only: where it came from")
 
 
+class EntryLineOut(BaseModel):
+    """One signed line of an entry (issue #5)."""
+
+    envelope_id: int = Field(description="The envelope the line touches")
+    amount: int = Field(
+        description="Whole BDT, signed: negative takes money from the envelope, positive adds"
+    )
+
+
 class EntryOut(BaseModel):
     id: int = Field(description="The entry")
     tenure_id: int = Field(description="The tenure recorded into")
@@ -153,4 +162,15 @@ class EntryOut(BaseModel):
     source: IncomeSource | None = Field(description="Deposits only")
     corrected_from: int | None = Field(
         description="Set on a FIX: the ORIGINAL wrong entry this one replaces"
+    )
+    lines: list[EntryLineOut] = Field(
+        description="The entry's signed lines, ordered by envelope id (issue #5)"
+    )
+    net_effect: int = Field(
+        description="The sum of the entry's lines; a transfer/sweep/allocation nets to 0"
+    )
+    size: int = Field(
+        description=(
+            "How much money moved: greatest(sum of positive lines, -sum of negative lines)"
+        )
     )
