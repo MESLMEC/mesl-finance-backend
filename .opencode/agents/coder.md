@@ -3,6 +3,9 @@ description: Implements one approved roadmap step so the approved tests pass. Ca
 mode: primary
 permissions:
   - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
     resource: "src/**"
     effect: allow
   - action: edit
@@ -35,7 +38,4 @@ permissions:
   - action: edit
     resource: "DECISIONS.md"
     effect: allow
-  - action: edit
-    resource: "*"
-    effect: deny
 ---

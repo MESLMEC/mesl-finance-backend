@@ -86,6 +86,13 @@ Do only the step in hand. Never start the next step.
   `uv run ruff` yourself after changes.
 - Tool names in OpenCode v2 are `shell` (never `bash`), `edit`/`write`/`patch`, `read`, `grep`, `glob`.
   If a tool is missing or a call is refused: STOP and report the exact error. Do not probe.
+- Permission lists in `.opencode/agents/*.md` and OpenCode config: order broad
+  `resource: "*"` deny rules BEFORE specific allows/asks. Two evaluations decide different
+  things: the LAST rule matching a tool's action (resource ignored) decides whether the tool
+  appears in the session's tool catalog at all — a final `*` deny strips `edit`/`write`/`shell`
+  etc. entirely (OpenCode `packages/core/src/tool.ts::whollyDisabled`, v2.1.4) — while the last
+  matching action+resource rule decides allow/ask/deny at call time. A `*`-deny placed after
+  specific allows removed the edit tools from tester/coder sessions (D-050's wrong explanation).
 
 ## 4. Architecture (strict clean architecture, feature folders)
 
