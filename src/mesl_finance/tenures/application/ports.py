@@ -15,7 +15,7 @@ from mesl_finance.tenures.domain.tenure import TenureView
 
 
 class TenureRepository(Protocol):
-    """The single write the tenure slice needs."""
+    """The tenure reads and writes."""
 
     async def close(
         self,
@@ -25,6 +25,14 @@ class TenureRepository(Protocol):
         recorded_by: str,
     ) -> TenureView:
         """Call ``close_tenure`` and return the new tenure row."""
+        ...
+
+    async def list_all(self) -> list[TenureView]:
+        """All tenures ordered by id."""
+        ...
+
+    async def get_open(self) -> TenureView | None:
+        """The currently open tenure, or None if none is open."""
         ...
 
 

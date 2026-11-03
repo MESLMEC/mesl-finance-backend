@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -22,6 +22,17 @@ class CloseTenureOut(BaseModel):
     id: int
     name: str
     opened_on: date
+
+
+class TenureOut(BaseModel):
+    """One row from `tenures` (db/schema.sql:29-39)."""
+
+    id: int
+    name: str
+    opened_on: date
+    closed_on: date | None = None
+    closed_at: datetime | None = None
+    closing_checksum: str | None = None
 
 
 class MemberSnapshotOut(BaseModel):

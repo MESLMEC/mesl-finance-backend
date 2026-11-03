@@ -90,6 +90,10 @@ from mesl_finance.tenures.application.read_snapshots import (
     ListHoldingSnapshots,
     ListMemberSnapshots,
 )
+from mesl_finance.tenures.application.read_tenures import (
+    GetOpenTenure,
+    ListTenures,
+)
 from mesl_finance.tenures.infrastructure.unit_of_work import SqlTenureUnitOfWork
 
 API_PREFIX = "/api/v1"
@@ -196,6 +200,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return SqlTenureUnitOfWork(engine, actor)
 
     app.state.close_tenure = CloseTenure(tenure_unit_of_work)
+    app.state.get_open_tenure = GetOpenTenure(tenure_unit_of_work)
+    app.state.list_tenures = ListTenures(tenure_unit_of_work)
     app.state.list_member_snapshots = ListMemberSnapshots(tenure_unit_of_work)
     app.state.list_asset_snapshots = ListAssetSnapshots(tenure_unit_of_work)
     app.state.list_holding_snapshots = ListHoldingSnapshots(tenure_unit_of_work)

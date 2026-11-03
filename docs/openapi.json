@@ -2432,6 +2432,66 @@
         "title": "SweepRequest",
         "type": "object"
       },
+      "TenureOut": {
+        "description": "One row from `tenures` (db/schema.sql:29-39).",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "closed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed On"
+          },
+          "closing_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Checksum"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opened_on": {
+            "format": "date",
+            "title": "Opened On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "opened_on"
+        ],
+        "title": "TenureOut",
+        "type": "object"
+      },
       "TokenResponse": {
         "properties": {
           "access_token": {
@@ -4929,6 +4989,36 @@
         ]
       }
     },
+    "/api/v1/tenures": {
+      "get": {
+        "operationId": "get_tenures_api_v1_tenures_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenureOut"
+                  },
+                  "title": "Response Get Tenures Api V1 Tenures Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Tenures",
+        "tags": [
+          "tenures"
+        ]
+      }
+    },
     "/api/v1/tenures/close": {
       "post": {
         "operationId": "post_close_tenure_api_v1_tenures_close_post",
@@ -4970,6 +5060,32 @@
           }
         ],
         "summary": "Post Close Tenure",
+        "tags": [
+          "tenures"
+        ]
+      }
+    },
+    "/api/v1/tenures/open": {
+      "get": {
+        "operationId": "get_open_tenure_api_v1_tenures_open_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenureOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Open Tenure",
         "tags": [
           "tenures"
         ]
