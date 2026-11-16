@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         SecretStr  # argon2 hash; make one with: python -m mesl_finance.auth.infrastructure.hash_cli
     )
     timezone: str = "Asia/Dhaka"
+    cors_origins: list[str] = []  # MESL_CORS_ORIGINS: JSON list; allowed browser origins
 
     @field_validator("jwt_secret")
     @classmethod

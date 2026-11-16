@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware  # re-exported from starlette, verified
 
 from mesl_finance.assets.api.router import router as assets_router
 from mesl_finance.assets.application.create_asset import CreateAsset
@@ -240,6 +241,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
         description=OVERVIEW,
         openapi_tags=OPENAPI_TAGS,
+    )
+    # Issue (Q-004): browser origins allowed to call the API, from MESL_CORS_ORIGINS.
+    # Empty default keeps every response header-free (tests/api/test_cors.py). Bearer
+    # only, so no credentials mode (D-006); the API's whole surface is GET/POST.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.cors_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["authorization"],
     )
     app.state.engine = engine
     app.state.token_service = tokens

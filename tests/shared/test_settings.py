@@ -95,6 +95,26 @@ def test_short_jwt_secret_rejected(clean_env: None, monkeypatch: pytest.MonkeyPa
     assert "at least 32" in str(info.value)
 
 
+CORS_ORIGINS_ENV = '["http://localhost:5173", "https://mesl.example"]'
+CORS_ORIGINS = ["http://localhost:5173", "https://mesl.example"]
+
+
+def test_cors_origins_defaults_to_an_empty_list(
+    clean_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Approved brief: without MESL_CORS_ORIGINS the origin list is [] — no CORS by default."""
+    settings = _settings(clean_env, monkeypatch)
+    assert settings.cors_origins == []
+
+
+def test_cors_origins_parses_from_the_env(clean_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Approved brief Q2=a: MESL_CORS_ORIGINS is a JSON list (pydantic-settings complex-field
+    parsing, sources/base.py:212 json.loads) -> the origins list."""
+    _set_env(monkeypatch, {**REQUIRED_ENV, "MESL_CORS_ORIGINS": CORS_ORIGINS_ENV})
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
+    assert settings.cors_origins == CORS_ORIGINS
+
+
 def test_secrets_masked_in_repr_and_recoverable(
     clean_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
