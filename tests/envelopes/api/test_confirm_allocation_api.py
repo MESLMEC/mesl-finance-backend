@@ -43,13 +43,14 @@ Library APIs used, verified in installed source this session:
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, timedelta
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import USERNAME, TestDb
+from tests.conftest import USERNAME, TestDb, idempotent
 
 POOL, EVENTS, ADMIN = 1, 2, 3
 
@@ -118,7 +119,9 @@ async def deposit(
     }
     if member_id is not None:
         body["member_id"] = member_id
-    response = await client.post("/api/v1/deposits", json=body, headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=body, headers=idempotent(auth, uuid.uuid4().hex)
+    )
     assert response.status_code == 201
 
 

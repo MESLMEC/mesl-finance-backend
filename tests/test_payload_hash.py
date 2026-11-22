@@ -14,6 +14,10 @@ protection `tests/test_schema_hash.py` gives `db/schema.sql`.
 The payload is executed whole by its revision, so a drift between the two files
 means the database would receive something other than what the revision claims
 to apply.
+
+The table below is the list of hand-written payloads; every migration added
+afterwards must get a row (the same tripwire idea as the alembic head in
+`tests/db/test_template_alembic.py`).
 """
 
 from __future__ import annotations
@@ -24,8 +28,12 @@ from pathlib import Path
 from typing import Protocol, cast
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PAYLOAD_FILE = REPO_ROOT / "db" / "sql" / "0002_asset_purchase_link.sql"
-REVISION_FILE = REPO_ROOT / "alembic" / "versions" / "0002_asset_purchase_link.py"
+
+# (revision id, payload slug) of every hand-written migration payload.
+PAYLOADS: list[tuple[str, str]] = [
+    ("0002", "0002_asset_purchase_link"),
+    ("0003", "0003_idempotency_keys"),
+]
 
 
 class RevisionModule(Protocol):
@@ -34,9 +42,10 @@ class RevisionModule(Protocol):
     PAYLOAD_SHA256: str
 
 
-def _load_revision() -> RevisionModule:
+def _load_revision(revision: str, slug: str) -> RevisionModule:
     """Load the revision module by path (its name is not a valid identifier)."""
-    spec = importlib.util.spec_from_file_location("mesl_revision_0002", REVISION_FILE)
+    path = REPO_ROOT / "alembic" / "versions" / f"{slug}.py"
+    spec = importlib.util.spec_from_file_location(f"mesl_revision_{revision}", path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -45,6 +54,25 @@ def _load_revision() -> RevisionModule:
 
 
 def test_payload_hash_matches_0002() -> None:
-    recorded = _load_revision().PAYLOAD_SHA256
+    revision, slug = PAYLOADS[0]
+    recorded = _load_revision(revision, slug).PAYLOAD_SHA256
     assert isinstance(recorded, str)
-    assert hashlib.sha256(PAYLOAD_FILE.read_bytes()).hexdigest() == recorded
+    payload = REPO_ROOT / "db" / "sql" / f"{slug}.sql"
+    assert hashlib.sha256(payload.read_bytes()).hexdigest() == recorded
+
+
+def test_payload_hash_matches_0003() -> None:
+    """The idempotency-keys payload (issue #4) is guarded like the first one."""
+    revision, slug = PAYLOADS[1]
+    recorded = _load_revision(revision, slug).PAYLOAD_SHA256
+    assert isinstance(recorded, str)
+    payload = REPO_ROOT / "db" / "sql" / f"{slug}.sql"
+    assert hashlib.sha256(payload.read_bytes()).hexdigest() == recorded
+
+
+def test_every_hand_written_payload_is_guarded() -> None:
+    """A new payload without a guard row would ship unguarded; this fails."""
+    on_disk = sorted(p.stem for p in (REPO_ROOT / "db" / "sql").glob("*.sql"))
+    guarded = sorted(slug for _revision, slug in PAYLOADS)
+
+    assert on_disk == guarded

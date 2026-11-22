@@ -40,6 +40,11 @@ class Unique(RuleViolation):
     title = "Already exists"
 
 
+class IdempotencyConflict(RuleViolation):
+    code = "idempotency_conflict"
+    title = "Idempotency key reused"
+
+
 class Unauthorized(DomainError):
     code = "unauthorized"
     title = "Authentication required"

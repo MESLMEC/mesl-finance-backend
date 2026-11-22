@@ -49,7 +49,7 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from tests.conftest import TestDb
+from tests.conftest import TestDb, idempotent
 
 RATE = 20
 
@@ -72,7 +72,7 @@ async def deposit(
     response = await client.post(
         "/api/v1/deposits",
         json={"amount": amount, "occurred_on": occurred_on.isoformat(), "source": "other"},
-        headers=auth,
+        headers=idempotent(auth, "deposit-1-1"),
     )
     assert response.status_code == 201
     return int(response.json()["id"])
@@ -89,7 +89,7 @@ async def pay(
             "source": "weekly_fee",
             "member_id": member_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "deposit-1-2"),
     )
     assert response.status_code == 201
     return int(response.json()["id"])

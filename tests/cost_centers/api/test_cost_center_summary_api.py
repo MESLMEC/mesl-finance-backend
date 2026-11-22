@@ -35,7 +35,7 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from tests.conftest import TestDb
+from tests.conftest import TestDb, idempotent
 
 POOL, EVENTS = 1, 2
 SUMMARY_KEYS = {
@@ -83,7 +83,7 @@ async def seed_event_spending(
             "envelope_id": EVENTS,
             "cost_center_id": cost_center_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "seed-1"),
     )
     assert deposit.status_code == 201, deposit.text
     expense = await client.post(

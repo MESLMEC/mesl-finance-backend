@@ -5,7 +5,7 @@ from datetime import timedelta
 from httpx import AsyncClient
 
 from mesl_finance.auth.infrastructure.tokens import JwtTokenService
-from tests.conftest import JWT_SECRET, PASSWORD, USERNAME, TestDb
+from tests.conftest import JWT_SECRET, PASSWORD, USERNAME, TestDb, idempotent
 
 LOGIN = {"username": USERNAME, "password": PASSWORD}
 DEPOSIT = {"amount": 100, "occurred_on": "2026-02-01", "source": "other"}
@@ -27,7 +27,9 @@ async def test_the_login_route_lives_under_the_api_prefix(client: AsyncClient, d
 async def test_the_ledger_route_lives_under_the_api_prefix(
     client: AsyncClient, lab: TestDb
 ) -> None:
-    response = await client.post("/api/v1/deposits", json=DEPOSIT, headers=_authorization())
+    response = await client.post(
+        "/api/v1/deposits", json=DEPOSIT, headers=idempotent(_authorization(), "deposit-1")
+    )
 
     assert response.status_code == 201
     assert response.json()["id"] > 0

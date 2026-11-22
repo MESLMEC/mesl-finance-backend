@@ -14,7 +14,7 @@ from tests.conftest import TestDb
 
 async def test_template_clone_is_stamped_and_healthy(db: TestDb) -> None:
     versions = await db.owner.fetch("SELECT version_num FROM alembic_version")
-    assert [row["version_num"] for row in versions] == ["0002"]
+    assert [row["version_num"] for row in versions] == ["0003"]
 
     problems = await db.owner.fetch("SELECT * FROM verify_all()")
     assert problems == []

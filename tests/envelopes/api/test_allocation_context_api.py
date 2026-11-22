@@ -46,7 +46,7 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from tests.conftest import TestDb
+from tests.conftest import TestDb, idempotent
 
 CONTEXT_FIELDS = {"pool_balance", "member_credit_held", "pool_after_member_credit"}
 POOL = 1
@@ -103,7 +103,7 @@ async def deposit(client: AsyncClient, auth: dict[str, str], amount: int, occurr
             "occurred_on": occurred_on.isoformat(),
             "source": "sponsorship",
         },
-        headers=auth,
+        headers=idempotent(auth, "deposit-1-1"),
     )
     assert response.status_code == 201
     return int(response.json()["id"])
@@ -133,7 +133,7 @@ async def pay(
             "source": "weekly_fee",
             "member_id": member_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "deposit-1-2"),
     )
     assert response.status_code == 201
 

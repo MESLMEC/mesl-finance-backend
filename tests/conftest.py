@@ -161,3 +161,14 @@ async def auth(client: AsyncClient) -> dict[str, str]:
         "/api/v1/auth/login", json={"username": USERNAME, "password": PASSWORD}
     )
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+def idempotent(auth_headers: dict[str, str], key: str) -> dict[str, str]:
+    """The auth headers plus the `Idempotency-Key` a write must carry (issue #4).
+
+    The header is REQUIRED on the money-writing endpoints, so every test that
+    writes one sends it. `key` must be unique per logical request within a
+    test: the same key with the same body replays the first answer, and the
+    same key with a different body is a 409.
+    """
+    return {**auth_headers, "Idempotency-Key": key}

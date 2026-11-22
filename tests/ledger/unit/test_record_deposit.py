@@ -34,10 +34,35 @@ class FakeLedger:
         return 42
 
 
+class FakeIdempotency:
+    """The shared key store, in memory (issue #4)."""
+
+    def __init__(self) -> None:
+        self.claimed: list[tuple[str, str]] = []
+        self.remembered: list[tuple[str, Any]] = []
+        self.replay: Any = None
+
+    async def claim(self, key: str, fingerprint: str) -> Any:
+        self.claimed.append((key, fingerprint))
+        return self.replay
+
+    async def remember(self, key: str, result: Any) -> None:
+        self.remembered.append((key, result))
+
+    async def result_for(self, key: str) -> Any:
+        return self.replay
+
+
 class FakeUow:
-    def __init__(self, actor: str, ledger: FakeLedger | None = None) -> None:
+    def __init__(
+        self,
+        actor: str,
+        ledger: FakeLedger | None = None,
+        idempotency: FakeIdempotency | None = None,
+    ) -> None:
         self.actor = actor
         self.ledger = FakeLedger() if ledger is None else ledger
+        self.idempotency = FakeIdempotency() if idempotency is None else idempotency
         self.committed = False
 
     async def __aenter__(self) -> Self:
@@ -60,6 +85,7 @@ def command(**overrides: object) -> RecordDepositCommand:
         "amount": 500,
         "occurred_on": date(2026, 2, 1),
         "source": _income_source().SPONSORSHIP,
+        "idempotency_key": "key-1",
     }
     fields.update(overrides)
     return RecordDepositCommand(**fields)  # type: ignore[arg-type]
@@ -80,6 +106,40 @@ async def test_it_records_the_deposit_in_the_open_tenure_and_commits() -> None:
     assert uow.committed
     tenure_id, deposit, recorded_by = uow.ledger.added[0]
     assert (tenure_id, deposit.amount, recorded_by) == (7, 500, "treasurer")
+
+
+async def test_it_claims_the_idempotency_key_before_the_write() -> None:
+    """The key is claimed FIRST, so a retry finds it before the write runs."""
+    uows: list[FakeUow] = []
+
+    def factory(actor: str) -> FakeUow:
+        uows.append(FakeUow(actor))
+        return uows[-1]
+
+    await RecordDeposit(factory)(command(), actor="treasurer")
+
+    uow = uows[0]
+    assert uow.idempotency.claimed
+    assert uow.idempotency.claimed[0][0] == "key-1"
+    assert uow.idempotency.remembered
+    assert uow.idempotency.remembered[0][0] == "key-1"
+
+
+async def test_a_replayed_key_returns_the_stored_result_without_writing() -> None:
+    """A key that already succeeded replays its result; no second write."""
+    uows: list[FakeUow] = []
+    store = FakeIdempotency()
+    store.replay = 42
+
+    def factory(actor: str) -> FakeUow:
+        uows.append(FakeUow(actor, idempotency=store))
+        return uows[-1]
+
+    entry_id = await RecordDeposit(factory)(command(), actor="treasurer")
+
+    assert entry_id == 42
+    assert uows[0].ledger.added == []
+    assert not uows[0].committed
 
 
 async def test_an_invalid_deposit_never_opens_a_transaction() -> None:

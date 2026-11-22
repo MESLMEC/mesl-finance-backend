@@ -27,7 +27,7 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from tests.conftest import USERNAME, TestDb
+from tests.conftest import USERNAME, TestDb, idempotent
 
 POOL, EVENTS, ADMIN = 1, 2, 3
 FIX_DAY = "2026-10-20"
@@ -64,7 +64,7 @@ async def fund(client: AsyncClient, auth: dict[str, str], *, envelope_id: int, a
             "source": "sponsorship",
             "envelope_id": envelope_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-1"),
     )
     assert response.status_code == 201
     return int(response.json()["id"])
@@ -232,7 +232,7 @@ async def test_the_replacement_keeps_the_originals_labels(
             "cost_center_id": cost_center,
             "envelope_id": POOL,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-2"),
     )
     assert deposit.status_code == 201
     deposit_id = int(deposit.json()["id"])
@@ -385,7 +385,7 @@ async def test_a_weekly_fee_fix_keeps_the_member_and_moves_the_credits(
             "source": "weekly_fee",
             "member_id": member,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-3"),
     )
     assert payment.status_code == 201
     deposit_id = int(payment.json()["id"])

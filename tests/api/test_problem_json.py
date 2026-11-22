@@ -10,7 +10,7 @@ from datetime import timedelta
 from httpx import AsyncClient
 
 from mesl_finance.auth.infrastructure.tokens import JwtTokenService
-from tests.conftest import JWT_SECRET, USERNAME, TestDb
+from tests.conftest import JWT_SECRET, USERNAME, TestDb, idempotent
 
 DEPOSIT = {"amount": 100, "occurred_on": "2026-02-01", "source": "other"}
 
@@ -80,7 +80,7 @@ async def test_a_rule_violation_is_a_problem_json_409(client: AsyncClient, lab: 
     response = await client.post(
         "/api/v1/deposits",
         json={**DEPOSIT, "occurred_on": "2025-12-31"},
-        headers=_authorization(),
+        headers=idempotent(_authorization(), "deposit-1"),
     )
 
     assert response.status_code == 409

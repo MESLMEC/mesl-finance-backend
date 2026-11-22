@@ -8,6 +8,7 @@ from mesl_finance.ledger.domain.fix_amount import AmountFix
 from mesl_finance.ledger.domain.label_edit import LabelEdit, LabelView
 from mesl_finance.ledger.domain.refund import Refund
 from mesl_finance.ledger.domain.transfer import Transfer
+from mesl_finance.shared.idempotency import IdempotencyStore
 from mesl_finance.shared.ports import UnitOfWork
 
 
@@ -26,6 +27,11 @@ class LedgerUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def ledger(self) -> LedgerRepository: ...
+
+    @property
+    def idempotency(self) -> IdempotencyStore:
+        """The key store, sharing this transaction (issue #4)."""
+        ...
 
 
 class ExpenseRepository(Protocol):

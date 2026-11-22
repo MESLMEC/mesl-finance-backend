@@ -5828,8 +5828,21 @@
     },
     "/api/v1/deposits": {
       "post": {
-        "description": "Money IN: fees, sponsorship, admin grants, anything (B-13/B-14).\n\nWithout `envelope_id` the amount lands in the \"Unallocated General\" pool;\nnaming one puts it there instead (e.g. an event's admin grant). A weekly\nfee needs `source=\"weekly_fee\"` + `member_id` and must NOT name an\nenvelope \u2014 the pool owns every member payment flow (db/schema.sql:\ncheck_shape). Returns `{\"id\"}`; unknown references (member / envelope /\ncost center) answer 422 `unknown_reference`, PostgreSQL's own walls\n(inactive envelope, pre-tenure date, no open tenure) 409.",
+        "description": "Money IN: fees, sponsorship, admin grants, anything (B-13/B-14).\n\nWithout `envelope_id` the amount lands in the \"Unallocated General\" pool;\nnaming one puts it there instead (e.g. an event's admin grant). A weekly\nfee needs `source=\"weekly_fee\"` + `member_id` and must NOT name an\nenvelope \u2014 the pool owns every member payment flow (db/schema.sql:\ncheck_shape). Returns `{\"id\"}`; unknown references (member / envelope /\ncost center) answer 422 `unknown_reference`, PostgreSQL's own walls\n(inactive envelope, pre-tenure date, no open tenure) 409.\n\n`Idempotency-Key` is REQUIRED (issue #4): retrying the same key with the\nsame request replays the first `{\"id\"}` and writes nothing; reusing it with\na different request is 409 `idempotency_conflict`.",
         "operationId": "post_deposit_api_v1_deposits_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

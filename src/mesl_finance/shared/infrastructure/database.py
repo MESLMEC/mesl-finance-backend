@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_en
 from sqlalchemy.ext.asyncio.engine import AsyncTransaction
 
 from mesl_finance.shared.infrastructure.error_mapping import map_db_error
+from mesl_finance.shared.infrastructure.idempotency import SqlIdempotencyStore
 from mesl_finance.shared.settings import Settings
 
 
@@ -31,6 +32,9 @@ class SqlUnitOfWork:
         self._actor = actor
         self._conn: AsyncConnection | None = None
         self._tx: AsyncTransaction | None = None
+        # The idempotency-key store shares this transaction (issue #4), so a
+        # claim and the write it protects commit together.
+        self.idempotency = SqlIdempotencyStore(self)
 
     @property
     def actor(self) -> str:

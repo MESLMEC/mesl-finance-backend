@@ -117,3 +117,28 @@ def test_preflight_needs_no_bearer_token() -> None:
     )
 
     assert response.status_code == 200
+
+
+def test_preflight_allows_the_idempotency_key_header() -> None:
+    """Issue #4: the browser must be allowed to send `Idempotency-Key`.
+
+    The header is NOT on the CORS safelist, so without it in `allow_headers` the
+    preflight fails with 400 "Disallowed CORS headers" and the browser never
+    sends the write (starlette/middleware/cors.py:127-131). The middleware
+    answers the preflight itself, so no database and no token are needed.
+    """
+    client = TestClient(create_app(settings_with([ALLOWED])))
+
+    response = client.options(
+        "/api/v1/deposits",
+        headers={
+            "Origin": ALLOWED,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization, content-type, idempotency-key",
+        },
+    )
+
+    assert response.status_code == 200
+    allowed = response.headers["access-control-allow-headers"].lower()
+    assert "idempotency-key" in allowed
+    assert "authorization" in allowed

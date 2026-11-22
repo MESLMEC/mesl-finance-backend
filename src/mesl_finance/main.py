@@ -249,7 +249,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=config.cors_origins,
         allow_methods=["GET", "POST"],
-        allow_headers=["authorization"],
+        allow_headers=["authorization", "idempotency-key"],
     )
     app.state.engine = engine
     app.state.token_service = tokens

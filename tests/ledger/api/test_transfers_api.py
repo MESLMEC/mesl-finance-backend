@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import USERNAME, TestDb
+from tests.conftest import USERNAME, TestDb, idempotent
 
 POOL, EVENTS, ADMIN = 1, 2, 3
 
@@ -59,7 +59,7 @@ async def fund(client: AsyncClient, auth: dict[str, str], *, envelope_id: int, a
             "source": "sponsorship",
             "envelope_id": envelope_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-1"),
     )
     assert response.status_code == 201
 

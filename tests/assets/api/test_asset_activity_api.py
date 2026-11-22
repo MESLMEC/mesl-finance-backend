@@ -39,7 +39,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import TestDb
+from tests.conftest import TestDb, idempotent
 
 FIELDS = {"asset_name", "ownership", "kind", "source", "units", "events"}
 
@@ -66,7 +66,7 @@ async def purchase_expense(client: AsyncClient, auth: dict[str, str], amount: in
     await client.post(
         "/api/v1/deposits",
         json={"amount": amount + 100, "occurred_on": "2026-02-01", "source": "sponsorship"},
-        headers=auth,
+        headers=idempotent(auth, "seed-1-1"),
     )
     response = await client.post(
         "/api/v1/expenses",

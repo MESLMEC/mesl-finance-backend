@@ -62,7 +62,7 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from tests.conftest import TestDb
+from tests.conftest import TestDb, idempotent
 
 STANDING_FIELDS = {
     "member_id",
@@ -135,7 +135,7 @@ async def pay(
             "source": "weekly_fee",
             "member_id": member_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "pay-1-1"),
     )
     assert response.status_code == 201
     return int(response.json()["id"])

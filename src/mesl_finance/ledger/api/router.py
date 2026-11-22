@@ -1,6 +1,6 @@
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Header, Request
 
 from mesl_finance.auth.api.dependencies import current_actor
 from mesl_finance.ledger.api.schemas import (
@@ -29,6 +29,7 @@ from mesl_finance.ledger.application.record_transfer import RecordTransfer, Reco
 from mesl_finance.ledger.domain.entry import EntryKind
 from mesl_finance.ledger.domain.entry_list import EntryView, ListEntriesQuery
 from mesl_finance.shared.api.responses import problem_responses
+from mesl_finance.shared.errors import ValidationFailed
 
 router = APIRouter(tags=["ledger"])
 
@@ -71,6 +72,7 @@ async def post_deposit(
     body: DepositRequest,
     user: Annotated[str, Depends(current_actor)],
     record_deposit: Annotated[RecordDeposit, Depends(get_record_deposit)],
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=255)],
 ) -> EntryCreated:
     """Money IN: fees, sponsorship, admin grants, anything (B-13/B-14).
 
@@ -81,8 +83,17 @@ async def post_deposit(
     check_shape). Returns `{"id"}`; unknown references (member / envelope /
     cost center) answer 422 `unknown_reference`, PostgreSQL's own walls
     (inactive envelope, pre-tenure date, no open tenure) 409.
+
+    `Idempotency-Key` is REQUIRED (issue #4): retrying the same key with the
+    same request replays the first `{"id"}` and writes nothing; reusing it with
+    a different request is 409 `idempotency_conflict`.
     """
-    entry_id = await record_deposit(RecordDepositCommand(**body.model_dump()), actor=user)
+    key = idempotency_key.strip()
+    if not key:
+        raise ValidationFailed("the Idempotency-Key header must not be blank")
+    entry_id = await record_deposit(
+        RecordDepositCommand(**body.model_dump(), idempotency_key=key), actor=user
+    )
     return EntryCreated(id=entry_id)
 
 

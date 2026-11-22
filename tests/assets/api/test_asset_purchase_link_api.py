@@ -49,7 +49,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import TestDb
+from tests.conftest import TestDb, idempotent
 
 POOL = 1
 EVENT_FIELDS = {
@@ -84,7 +84,7 @@ async def fund(client: AsyncClient, auth: dict[str, str], amount: int = 500) -> 
     response = await client.post(
         "/api/v1/deposits",
         json={"amount": amount, "occurred_on": "2026-02-01", "source": "sponsorship"},
-        headers=auth,
+        headers=idempotent(auth, "fund-1-1"),
     )
     assert response.status_code == 201
     return int(response.json()["id"])

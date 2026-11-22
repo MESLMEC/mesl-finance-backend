@@ -46,7 +46,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import USERNAME, TestDb
+from tests.conftest import USERNAME, TestDb, idempotent
 
 POOL, EVENTS = 1, 2
 
@@ -84,7 +84,7 @@ async def seed_event_spending(
             "envelope_id": EVENTS,
             "cost_center_id": cost_center_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "seed-1"),
     )
     assert deposit.status_code == 201, deposit.text
     expense = await client.post(

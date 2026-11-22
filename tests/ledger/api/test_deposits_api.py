@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import USERNAME, TestDb
+from tests.conftest import USERNAME, TestDb, idempotent
 
 POOL, EVENTS = 1, 2
 
@@ -27,7 +27,9 @@ async def test_a_deposit_lands_in_the_pool_by_default(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     response = await client.post(
-        "/api/v1/deposits", json=deposit(note="sponsor", tag="sponsorship"), headers=auth
+        "/api/v1/deposits",
+        json=deposit(note="sponsor", tag="sponsorship"),
+        headers=idempotent(auth, "deposit-1"),
     )
 
     assert response.status_code == 201
@@ -50,7 +52,7 @@ async def test_a_deposit_can_target_another_envelope(
     response = await client.post(
         "/api/v1/deposits",
         json=deposit(source="registration", envelope_id=EVENTS, amount=300),
-        headers=auth,
+        headers=idempotent(auth, "deposit-2"),
     )
 
     assert response.status_code == 201
@@ -65,7 +67,7 @@ async def test_a_weekly_fee_is_linked_to_its_member_and_goes_to_the_pool(
     response = await client.post(
         "/api/v1/deposits",
         json=deposit(source="weekly_fee", member_id=member, amount=100),
-        headers=auth,
+        headers=idempotent(auth, "deposit-3"),
     )
 
     assert response.status_code == 201
@@ -81,7 +83,9 @@ async def test_a_weekly_fee_is_linked_to_its_member_and_goes_to_the_pool(
 async def test_a_bad_amount_is_a_422_problem(
     client: AsyncClient, lab: TestDb, auth: dict[str, str], amount: Any
 ) -> None:
-    response = await client.post("/api/v1/deposits", json=deposit(amount=amount), headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=deposit(amount=amount), headers=idempotent(auth, "deposit-4")
+    )
 
     assert response.status_code == 422
     assert response.headers["content-type"].startswith("application/problem+json")
@@ -93,7 +97,7 @@ async def test_a_weekly_fee_without_a_member_is_rejected_before_touching_the_dat
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     response = await client.post(
-        "/api/v1/deposits", json=deposit(source="weekly_fee"), headers=auth
+        "/api/v1/deposits", json=deposit(source="weekly_fee"), headers=idempotent(auth, "deposit-5")
     )
 
     assert response.status_code == 422
@@ -108,7 +112,7 @@ async def test_a_weekly_fee_naming_an_envelope_is_a_422(
     response = await client.post(
         "/api/v1/deposits",
         json=deposit(source="weekly_fee", member_id=member, envelope_id=EVENTS),
-        headers=auth,
+        headers=idempotent(auth, "deposit-6"),
     )
 
     assert response.status_code == 422
@@ -121,7 +125,9 @@ async def test_a_non_weekly_source_with_a_member_is_a_422(
 ) -> None:
     member = await lab.app.fetchval("INSERT INTO members(name) VALUES ('C') RETURNING id")
 
-    response = await client.post("/api/v1/deposits", json=deposit(member_id=member), headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=deposit(member_id=member), headers=idempotent(auth, "deposit-7")
+    )
 
     assert response.status_code == 422
     assert response.json()["code"] == "validation_failed"
@@ -131,7 +137,9 @@ async def test_a_non_weekly_source_with_a_member_is_a_422(
 async def test_an_unknown_source_is_a_422_validation_error(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
-    response = await client.post("/api/v1/deposits", json=deposit(source="gift"), headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=deposit(source="gift"), headers=idempotent(auth, "deposit-8")
+    )
 
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
@@ -142,7 +150,9 @@ async def test_an_unknown_member_is_a_422_not_a_500(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     response = await client.post(
-        "/api/v1/deposits", json=deposit(source="weekly_fee", member_id=999), headers=auth
+        "/api/v1/deposits",
+        json=deposit(source="weekly_fee", member_id=999),
+        headers=idempotent(auth, "deposit-9"),
     )
 
     assert response.status_code == 422
@@ -153,7 +163,9 @@ async def test_an_unknown_member_is_a_422_not_a_500(
 async def test_an_unknown_envelope_is_a_422_and_writes_nothing(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
-    response = await client.post("/api/v1/deposits", json=deposit(envelope_id=999), headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=deposit(envelope_id=999), headers=idempotent(auth, "deposit-10")
+    )
 
     assert response.status_code == 422
     assert response.json()["code"] == "unknown_reference"
@@ -163,7 +175,9 @@ async def test_an_unknown_envelope_is_a_422_and_writes_nothing(
 async def test_a_deposit_with_an_unknown_cost_center_is_a_422_and_writes_nothing(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
-    response = await client.post("/api/v1/deposits", json=deposit(cost_center_id=999), headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=deposit(cost_center_id=999), headers=idempotent(auth, "deposit-11")
+    )
 
     assert response.status_code == 422
     assert response.json()["code"] == "unknown_reference"
@@ -178,7 +192,7 @@ async def test_a_deposit_into_an_inactive_envelope_is_a_409(
     response = await client.post(
         "/api/v1/deposits",
         json=deposit(source="registration", envelope_id=EVENTS),
-        headers=auth,
+        headers=idempotent(auth, "deposit-12"),
     )
 
     assert response.status_code == 409
@@ -197,7 +211,7 @@ async def test_a_deposit_keeps_its_tag_and_cost_center(
     response = await client.post(
         "/api/v1/deposits",
         json=deposit(amount=700, note="gate takings", tag="fest", cost_center_id=cost_center),
-        headers=auth,
+        headers=idempotent(auth, "deposit-13"),
     )
 
     assert response.status_code == 201
@@ -230,7 +244,9 @@ async def test_a_date_before_the_tenure_opened_is_a_409(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     response = await client.post(
-        "/api/v1/deposits", json=deposit(occurred_on="2025-12-31"), headers=auth
+        "/api/v1/deposits",
+        json=deposit(occurred_on="2025-12-31"),
+        headers=idempotent(auth, "deposit-14"),
     )
 
     assert response.status_code == 409
@@ -240,7 +256,9 @@ async def test_a_date_before_the_tenure_opened_is_a_409(
 async def test_without_an_open_tenure_the_answer_is_a_409(
     client: AsyncClient, db: TestDb, auth: dict[str, str]
 ) -> None:
-    response = await client.post("/api/v1/deposits", json=deposit(), headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=deposit(), headers=idempotent(auth, "deposit-15")
+    )
 
     assert response.status_code == 409
     assert response.json()["code"] == "no_open_tenure"

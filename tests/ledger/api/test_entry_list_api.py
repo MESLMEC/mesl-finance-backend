@@ -30,7 +30,7 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from tests.conftest import USERNAME, TestDb
+from tests.conftest import USERNAME, TestDb, idempotent
 
 ENTRY_KEYS = {
     "id",
@@ -72,7 +72,9 @@ async def deposit(client: AsyncClient, auth: dict[str, str], **overrides: Any) -
         "source": "sponsorship",
     }
     body.update(overrides)
-    response = await client.post("/api/v1/deposits", json=body, headers=auth)
+    response = await client.post(
+        "/api/v1/deposits", json=body, headers=idempotent(auth, "deposit-1-1")
+    )
     assert response.status_code == 201
     return int(response.json()["id"])
 

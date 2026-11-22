@@ -30,7 +30,7 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from tests.conftest import USERNAME, TestDb
+from tests.conftest import USERNAME, TestDb, idempotent
 
 POOL, EVENTS, ADMIN = 1, 2, 3
 
@@ -73,7 +73,7 @@ async def fund(client: AsyncClient, auth: dict[str, str], *, envelope_id: int, a
             "source": "sponsorship",
             "envelope_id": envelope_id,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-1"),
     )
     assert response.status_code == 201
     return int(response.json()["id"])
@@ -195,7 +195,7 @@ async def test_an_explicit_null_clears_the_tag_and_the_cost_center(
             "tag": "sponsor",
             "cost_center_id": cost_center,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-2"),
     )
     assert created.status_code == 201
     deposit_id = int(created.json()["id"])
@@ -224,7 +224,7 @@ async def test_an_omitted_field_is_left_alone(
             "tag": "sponsor",
             "cost_center_id": cost_center,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-3"),
     )
     assert created.status_code == 201
     deposit_id = int(created.json()["id"])
@@ -384,7 +384,7 @@ async def test_changing_a_weekly_fee_deposit_to_another_source_while_a_member_is
             "source": "weekly_fee",
             "member_id": member,
         },
-        headers=auth,
+        headers=idempotent(auth, "fund-1-4"),
     )
     assert payment.status_code == 201
     deposit_id = int(payment.json()["id"])
