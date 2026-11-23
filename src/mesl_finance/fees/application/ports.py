@@ -2,7 +2,7 @@ from typing import Protocol
 
 from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRate, FeeRateView
-from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownRange
+from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownWeeks
 from mesl_finance.shared.ports import UnitOfWork
 
 
@@ -15,8 +15,8 @@ class FeeRepository(Protocol):
         """Every rate, in effective_from and id order."""
         ...
 
-    async def set_shutdown(self, shutdown: ShutdownRange, recorded_by: str) -> int:
-        """Mark or reopen the whole range; returns the number of weeks written."""
+    async def set_shutdown(self, shutdown: ShutdownWeeks, recorded_by: str) -> int:
+        """Mark or reopen each named week; returns the number of rows written."""
         ...
 
     async def list_shutdown_events(self) -> list[ShutdownEventView]:

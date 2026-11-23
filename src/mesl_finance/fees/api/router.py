@@ -127,16 +127,16 @@ async def post_shutdown_weeks(
     user: Annotated[str, Depends(current_actor)],
     set_shutdown: Annotated[SetShutdown, Depends(get_set_shutdown)],
 ) -> ShutdownResult:
-    """Mark whole weeks as closed-for-camp; nobody owes a fee for them (B-08).
+    """Mark the named weeks as closed-for-camp; nobody owes a fee for them (B-08).
 
-    ONE row per week written by the schema's `set_shutdown()`; weeks run
-    Sunday→Sunday. UNDO a wrong range by calling again with
-    `is_shutdown=false` (newest row wins — nothing is ever deleted, append-only,
-    D-104). Sunday/order/already-shutdown-in-closed-tenure violations 409.
+    ONE row per named Sunday, written by the schema's `set_shutdown()`; weeks run
+    Sunday→Sunday, so name each Sunday you mean. UNDO a mistaken week by calling
+    again with `is_shutdown=false` (newest row wins — nothing is ever deleted,
+    append-only, D-104). An empty or repeating list is 422; a non-Sunday, or a
+    week of a closed tenure, is 409.
     """
     command = SetShutdownCommand(
-        from_week=body.from_week,
-        to_week=body.to_week,
+        weeks=tuple(body.weeks),
         is_shutdown=body.is_shutdown,
         reason=body.reason,
     )

@@ -2,7 +2,7 @@ from typing import Any
 
 from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRate, FeeRateView
-from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownRange
+from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownWeeks
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -56,24 +56,24 @@ class SqlFeeRepository:
         )
         return [_rate_view(row) for row in result.all()]
 
-    async def set_shutdown(self, shutdown: ShutdownRange, recorded_by: str) -> int:
-        # The schema's own action: one row per week, the Sunday and order rules
-        # are PostgreSQL's (db/schema.sql:220-233).
-        result = await self._uow.execute(
-            """
-            SELECT set_shutdown(
-                :from_week, :to_week, :is_shutdown, :recorded_by, :reason
-            ) AS weeks
-            """,
-            {
-                "from_week": shutdown.from_week,
-                "to_week": shutdown.to_week,
-                "is_shutdown": shutdown.is_shutdown,
-                "recorded_by": recorded_by,
-                "reason": shutdown.reason,
-            },
-        )
-        return int(result.one()[0])
+    async def set_shutdown(self, shutdown: ShutdownWeeks, recorded_by: str) -> int:
+        # One schema call per named Sunday, all in the caller's transaction; the Sunday
+        # and tenure rules stay PostgreSQL's (db/schema.sql:220-233, 177-183).
+        weeks = 0
+        for week in shutdown.weeks:
+            result = await self._uow.execute(
+                """
+                SELECT set_shutdown(:week, :week, :is_shutdown, :recorded_by, :reason) AS weeks
+                """,
+                {
+                    "week": week,
+                    "is_shutdown": shutdown.is_shutdown,
+                    "recorded_by": recorded_by,
+                    "reason": shutdown.reason,
+                },
+            )
+            weeks += int(result.one()[0])
+        return weeks
 
     async def list_shutdown_events(self) -> list[ShutdownEventView]:
         result = await self._uow.execute(

@@ -1,17 +1,22 @@
-"""A shutdown-week range. Pure Python; `set_shutdown` owns the week rules."""
+"""The weeks a shutdown call names. Pure Python; `set_shutdown` owns the week rules."""
 
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from mesl_finance.shared.errors import ValidationFailed
+
 
 @dataclass(frozen=True)
-class ShutdownRange:
-    """The range `set_shutdown()` receives (db/schema.sql:220-233)."""
+class ShutdownWeeks:
+    """The Sundays `set_shutdown()` is called for, one row each (db/schema.sql:220-233)."""
 
-    from_week: date
-    to_week: date
+    weeks: tuple[date, ...]
     is_shutdown: bool = True
     reason: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.weeks:
+            raise ValidationFailed("a shutdown call must name at least one Sunday")
 
 
 @dataclass(frozen=True)

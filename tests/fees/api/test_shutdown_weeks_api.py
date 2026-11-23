@@ -1,42 +1,57 @@
-"""API tests for shutdown weeks (roadmap step 7.2).
+"""API tests for shutdown weeks (issue #15, step 1 of 2).
 
-Approved brief this session: every question was left unanswered, so the brief's
-labelled suggestions stand (same pattern as D-062/D-064/D-066/D-070/D-076/D-079/
-D-082/D-086/D-088/D-090/D-093/D-096/D-099/D-101): Q2=a writes AND reads; Q3=a ONE
-range action `POST /api/v1/shutdown-weeks` calling the schema's `set_shutdown()`
-and answering `201 {"weeks": n}`, with the undo as the same route and
-`is_shutdown=false`; Q6=a the read returns the raw event rows ordered
-`week_start, id` (the per-week "latest wins" view is a dues read, 7.5).
+Approved brief (this session) reshapes the write so the caller NAMES the Sundays
+instead of sending a range: D-104 Q3=a ("body {from_week, to_week, ...}") is
+superseded, D-104 Q6=a (the raw history list) is untouched and its state read is
+step 2. Approved answers: (Q1=a) empty/duplicate refusals are pydantic's 422
+`validation_error`; (Q3=a) the `to-week is before from-week` test is deleted because
+that input no longer exists; (Q4=a) the domain value object is renamed
+`ShutdownWeeks`; (Q5=a) the commit says `Refs #15`.
 
 Contract this file pins:
     POST /api/v1/shutdown-weeks  201  {"weeks": n}
-         body {"from_week", "to_week", "is_shutdown"=true, "reason"=""}
+         body {"weeks": ["YYYY-MM-DD", ...], "is_shutdown"=true, "reason"=""}
+         - `n` is the number of named Sundays, one row each, in the order supplied;
+         - `weeks: []` and a repeated Sunday are 422 `validation_error`, and the
+           errors must blame `weeks` and nothing else, so an old `{from_week,
+           to_week}` body cannot satisfy them by accident;
+         - the old `{"from_week", "to_week"}` body is 422 (extra fields forbidden);
+         - UNDO is the same action with `is_shutdown=false` (newest row wins);
+         - the whole list is ONE transaction: a bad Sunday anywhere leaves NOTHING
+           written, so a half-applied list can never exist.
     GET  /api/v1/shutdown-weeks  200  [ShutdownEventOut] in week_start, id order
+         (history, NOT state: a reopened week still lists its `is_shutdown=true` row;
+         the state read is step 2)
 
 ShutdownEventOut = {"id","week_start","is_shutdown","reason","recorded_at",
 "recorded_by"}; `recorded_by` is the JWT actor, never a body field.
 
-Database rules these tests rely on (db/schema.sql, read this session):
+Database rules these tests rely on (db/schema.sql, read in the step-7.2 session and
+re-read this session):
 - `set_shutdown(from,to,is_shutdown,by,reason='')` (:220-233) refuses a non-Sunday
-  end with P0001 "weeks start on Sunday", refuses `to < from` with P0001
-  "to-week is before from-week", inserts ONE row per week and returns the count;
+  end with P0001 "weeks start on Sunday", inserts ONE row per week and returns the
+  count; the adapter calls it once per named week as `set_shutdown(w, w, ...)`, so
+  its "to-week is before from-week" branch is unreachable from the API;
 - `shutdown_guard` (:177-183) refuses a week inside a closed tenure with P0001
   "week ... belongs to a closed tenure";
-- the comment on the table says the latest event per week wins (:117), which is
-  why the undo is a new `is_shutdown=false` row, never an UPDATE (append-only,
-  :160);
+- the latest event per week wins (:117, :594-595), which is why the undo is a new
+  `is_shutdown=false` row, never an UPDATE (append-only, :160);
 - `labapp` has INSERT on `shutdown_events` (:1194); `set_shutdown` is default
-  PUBLIC EXECUTE (verified live from `pg_proc` this session).
+  PUBLIC EXECUTE (verified live from `pg_proc` in the 7.2 session).
 
-Library APIs used, all verified in installed source or by probe this session:
+Library APIs used, verified in installed source or by probe:
 - `httpx.AsyncClient.post/get` (httpx 0.28.1,
   .venv/lib/python3.15/site-packages/httpx/_client.py:1751,1838);
 - `asyncpg.Connection.fetch/fetchval/execute` (asyncpg-stubs 0.32.0,
   .venv/lib/python3.15/site-packages/asyncpg-stubs/connection.pyi:145,213,236);
-- pydantic 2.14.1 parses an ISO `"YYYY-MM-DD"` into `date` and rejects a bad
-  string with `ValidationError` (live probe this session);
+- pydantic 2.14.1 parses an ISO `"YYYY-MM-DD"` into `date` and rejects a bad string
+  with `ValidationError` (probe in the step-brief session); the new refusals were
+  probed there too: `Field(min_length=1)` on a `list` -> `too_short`, a
+  `field_validator` raising `ValueError` -> `value_error`, `extra="forbid"` ->
+  `extra_forbidden`, and FastAPI turns all three into 422 `validation_error`
+  (src/mesl_finance/shared/api/problems.py:71-80);
 - `datetime.date/timedelta` are stdlib;
-- the real `client` / `lab` / `auth` / `db` fixtures from tests/conftest.py.
+- the real `client` / `lab` / `auth` fixtures from tests/conftest.py.
 """
 
 from __future__ import annotations
@@ -57,6 +72,16 @@ def assert_problem(response: Any, status: int, code: str) -> None:
     assert response.json()["code"] == code
 
 
+def assert_weeks_error(response: Any) -> None:
+    """A 422 that blames `weeks` and nothing else.
+
+    The old `{from_week, to_week}` schema answers a `weeks` body with 422 too, but its
+    errors also name `from_week`/`to_week`, so this exact-loc check keeps it red.
+    """
+    assert_problem(response, 422, "validation_error")
+    assert [error["loc"] for error in response.json()["errors"]] == [["body", "weeks"]]
+
+
 async def sunday(db: TestDb) -> date:
     s0: date = await db.owner.fetchval("SELECT sunday_on_or_before(current_date)")
     return s0
@@ -65,14 +90,10 @@ async def sunday(db: TestDb) -> date:
 async def shut(
     client: AsyncClient,
     auth: dict[str, str],
-    from_week: date,
-    to_week: date,
+    *weeks: date,
     **overrides: Any,
 ) -> Any:
-    body: dict[str, Any] = {
-        "from_week": from_week.isoformat(),
-        "to_week": to_week.isoformat(),
-    }
+    body: dict[str, Any] = {"weeks": [week.isoformat() for week in weeks]}
     body.update(overrides)
     return await client.post("/api/v1/shutdown-weeks", json=body, headers=auth)
 
@@ -106,64 +127,99 @@ async def event_count(db: TestDb) -> int:
 # ---- write ------------------------------------------------------------------
 
 
-async def test_set_shutdown_returns_201_and_writes_one_row_per_week(
+async def test_set_shutdown_writes_one_row_per_named_week(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     s0 = await sunday(lab)
     first, second, third = (s0 + timedelta(days=days) for days in (14, 21, 28))
+    supplied = [third, first, second]
 
-    response = await shut(client, auth, first, third, reason="campus incident")
+    response = await shut(client, auth, *supplied, reason="campus incident")
 
     assert response.status_code == 201
     assert response.json() == {"weeks": 3}
-    stored = await events(lab)
-    assert [row["week_start"] for row in stored] == [first, second, third]
-    assert all(row["is_shutdown"] is True for row in stored)
-    assert all(row["reason"] == "campus incident" for row in stored)
-    assert all(row["recorded_by"] == USERNAME for row in stored)
-
-
-async def test_set_shutdown_without_a_token_is_401(client: AsyncClient, lab: TestDb) -> None:
-    s0 = await sunday(lab)
-
-    response = await client.post(
-        "/api/v1/shutdown-weeks",
-        json={"from_week": s0.isoformat(), "to_week": s0.isoformat()},
+    rows = await lab.owner.fetch(
+        """
+        SELECT week_start, is_shutdown, reason, recorded_by
+        FROM shutdown_events
+        ORDER BY id
+        """
     )
+    assert [row["week_start"] for row in rows] == supplied
+    assert all(row["is_shutdown"] is True for row in rows)
+    assert all(row["reason"] == "campus incident" for row in rows)
+    assert all(row["recorded_by"] == USERNAME for row in rows)
 
-    assert_problem(response, 401, "invalid_token")
+
+async def test_two_named_sundays_shut_exactly_two_weeks(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    s0 = await sunday(lab)
+    first, between, third = (s0 + timedelta(days=days) for days in (7, 14, 21))
+
+    response = await shut(client, auth, first, third)
+
+    assert response.status_code == 201
+    assert response.json() == {"weeks": 2}
+    stored = await events(lab)
+    assert [row["week_start"] for row in stored] == [first, third]
+    assert between not in {row["week_start"] for row in stored}
 
 
-async def test_shutdown_range_not_on_sunday_is_409(
+async def test_an_empty_weeks_list_is_422(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    response = await shut(client, auth)
+
+    assert_weeks_error(response)
+    assert await event_count(lab) == 0
+
+
+async def test_a_duplicate_sunday_is_422(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    s0 = await sunday(lab)
+    week = s0 + timedelta(days=14)
+
+    response = await shut(client, auth, week, week)
+
+    assert_weeks_error(response)
+    assert await event_count(lab) == 0
+
+
+async def test_a_non_sunday_week_is_409(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     s0 = await sunday(lab)
     monday = s0 + timedelta(days=1)
 
-    response = await shut(client, auth, monday, monday)
+    response = await shut(client, auth, monday)
 
     assert_problem(response, 409, "rule_violation")
     assert "weeks start on Sunday" in response.json()["detail"]
     assert await event_count(lab) == 0
 
 
-async def test_shutdown_to_week_before_from_week_is_409(
+async def test_a_sunday_and_a_monday_write_nothing(
     client: AsyncClient, lab: TestDb, auth: dict[str, str]
 ) -> None:
     s0 = await sunday(lab)
+    good_week, monday = s0 + timedelta(days=14), s0 + timedelta(days=15)
 
-    response = await shut(client, auth, s0 + timedelta(days=7), s0)
+    response = await shut(client, auth, good_week, monday)
 
     assert_problem(response, 409, "rule_violation")
-    assert "to-week is before from-week" in response.json()["detail"]
+    assert "weeks start on Sunday" in response.json()["detail"]
     assert await event_count(lab) == 0
 
 
-async def test_single_week_shutdown(client: AsyncClient, lab: TestDb, auth: dict[str, str]) -> None:
+async def test_a_single_named_week_is_shut(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
     s0 = await sunday(lab)
     week = s0 + timedelta(days=14)
 
-    response = await shut(client, auth, week, week)
+    response = await shut(client, auth, week)
 
     assert response.status_code == 201
     assert response.json() == {"weeks": 1}
@@ -176,8 +232,8 @@ async def test_reopening_a_week_writes_a_false_row_that_wins(
     s0 = await sunday(lab)
     week = s0 + timedelta(days=14)
 
-    closed = await shut(client, auth, week, week, reason="campus incident")
-    reopened = await shut(client, auth, week, week, is_shutdown=False, reason="was a mistake")
+    closed = await shut(client, auth, week, reason="campus incident")
+    reopened = await shut(client, auth, week, is_shutdown=False, reason="was a mistake")
 
     assert (closed.status_code, reopened.status_code) == (201, 201)
     assert len(await events(lab)) == 2
@@ -195,11 +251,37 @@ async def test_closed_tenure_rejects_a_shutdown(
     await lab.owner.execute("SELECT close_tenure($1::date + 2, $2, 'T2')", s0, USERNAME)
     in_the_closed_tenure = s0 - timedelta(days=7)
 
-    response = await shut(client, auth, in_the_closed_tenure, in_the_closed_tenure)
+    response = await shut(client, auth, in_the_closed_tenure)
 
     assert_problem(response, 409, "rule_violation")
     assert "belongs to a closed tenure" in response.json()["detail"]
     assert await event_count(lab) == 0
+
+
+async def test_the_old_range_body_is_422(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    s0 = await sunday(lab)
+
+    response = await client.post(
+        "/api/v1/shutdown-weeks",
+        json={"from_week": s0.isoformat(), "to_week": (s0 + timedelta(days=7)).isoformat()},
+        headers=auth,
+    )
+
+    assert_problem(response, 422, "validation_error")
+    assert await event_count(lab) == 0
+
+
+async def test_set_shutdown_without_a_token_is_401(client: AsyncClient, lab: TestDb) -> None:
+    s0 = await sunday(lab)
+
+    response = await client.post(
+        "/api/v1/shutdown-weeks",
+        json={"weeks": [s0.isoformat()]},
+    )
+
+    assert_problem(response, 401, "invalid_token")
 
 
 # ---- read -------------------------------------------------------------------
@@ -211,7 +293,7 @@ async def test_list_shutdown_events_returns_the_rows_in_week_order(
     s0 = await sunday(lab)
     first, second = s0 + timedelta(days=7), s0 + timedelta(days=14)
     assert (await shut(client, auth, first, second)).status_code == 201
-    assert (await shut(client, auth, first, first, is_shutdown=False)).status_code == 201
+    assert (await shut(client, auth, first, is_shutdown=False)).status_code == 201
 
     response = await client.get("/api/v1/shutdown-weeks", headers=auth)
 

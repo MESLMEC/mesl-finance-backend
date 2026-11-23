@@ -175,7 +175,7 @@ async def waive(
 async def shut_down(client: AsyncClient, auth: dict[str, str], week: date) -> None:
     response = await client.post(
         "/api/v1/shutdown-weeks",
-        json={"from_week": week.isoformat(), "to_week": week.isoformat(), "reason": "vacation"},
+        json={"weeks": [week.isoformat()], "reason": "vacation"},
         headers=auth,
     )
     assert response.status_code == 201

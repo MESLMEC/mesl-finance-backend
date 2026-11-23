@@ -15,7 +15,7 @@ decision: ask the user.
 - [ ] B-05 The weekly fee is the same for every member (20 BDT now). The global rate may change later (possibly by batch); a change affects only future weeks, never past ones.
 - [ ] B-06 A fee week starts on Sunday. A member owes a week if they were a member on that Sunday: joining on or before it, or having an end date on it, both owe it.
 - [ ] B-07 Members pay random lump sums, not a fixed amount per week.
-- [ ] B-08 Shutdown weeks (long national vacation, campus incident) are forgiven. They are entered as whole weeks only, as a from-week to to-week range.
+- [ ] B-08 Shutdown weeks (long national vacation, campus incident) are forgiven. The treasurer names each Sunday; a shutdown is never sent as a from-to range.
 - [ ] B-09 No automatic "4 missed weeks" trigger and no pending-review state: the system shows raw dues numbers and the admin decides.
 - [ ] B-10 Arrears of a leaving member stay until paid or waived. One-week friction is settled with a waiver.
 - [ ] B-11 Leftover member credit is refunded, or donated to the lab if the member wants.

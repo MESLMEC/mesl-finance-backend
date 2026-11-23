@@ -2475,12 +2475,6 @@
       "SetShutdownRequest": {
         "additionalProperties": false,
         "properties": {
-          "from_week": {
-            "description": "The Sunday the range starts",
-            "format": "date",
-            "title": "From Week",
-            "type": "string"
-          },
           "is_shutdown": {
             "default": true,
             "description": "False = undo a mistake with the latest-wins rule",
@@ -2489,20 +2483,23 @@
           },
           "reason": {
             "default": "",
-            "description": "Free text, stored on all rows",
+            "description": "Free text, stored on every row",
             "title": "Reason",
             "type": "string"
           },
-          "to_week": {
-            "description": "The Sunday the range ends (>= from_week)",
-            "format": "date",
-            "title": "To Week",
-            "type": "string"
+          "weeks": {
+            "description": "The Sundays to mark (or reopen); one row each, in this order",
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Weeks",
+            "type": "array"
           }
         },
         "required": [
-          "from_week",
-          "to_week"
+          "weeks"
         ],
         "title": "SetShutdownRequest",
         "type": "object"
@@ -2556,7 +2553,7 @@
       "ShutdownResult": {
         "properties": {
           "weeks": {
-            "description": "Rows written (one per week in the range)",
+            "description": "Rows written (one per named Sunday)",
             "title": "Weeks",
             "type": "integer"
           }
@@ -10136,7 +10133,7 @@
         ]
       },
       "post": {
-        "description": "Mark whole weeks as closed-for-camp; nobody owes a fee for them (B-08).\n\nONE row per week written by the schema's `set_shutdown()`; weeks run\nSunday\u2192Sunday. UNDO a wrong range by calling again with\n`is_shutdown=false` (newest row wins \u2014 nothing is ever deleted, append-only,\nD-104). Sunday/order/already-shutdown-in-closed-tenure violations 409.",
+        "description": "Mark the named weeks as closed-for-camp; nobody owes a fee for them (B-08).\n\nONE row per named Sunday, written by the schema's `set_shutdown()`; weeks run\nSunday\u2192Sunday, so name each Sunday you mean. UNDO a mistaken week by calling\nagain with `is_shutdown=false` (newest row wins \u2014 nothing is ever deleted,\nappend-only, D-104). An empty or repeating list is 422; a non-Sunday, or a\nweek of a closed tenure, is 409.",
         "operationId": "post_shutdown_weeks_api_v1_shutdown_weeks_post",
         "requestBody": {
           "content": {

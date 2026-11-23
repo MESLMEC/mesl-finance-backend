@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FeeRateOut(BaseModel):
@@ -30,17 +30,26 @@ class ShutdownEventOut(BaseModel):
 class SetShutdownRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    from_week: date = Field(description="The Sunday the range starts")
-    to_week: date = Field(description="The Sunday the range ends (>= from_week)")
+    weeks: list[date] = Field(
+        min_length=1,
+        description="The Sundays to mark (or reopen); one row each, in this order",
+    )
     is_shutdown: bool = Field(
         default=True,
         description="False = undo a mistake with the latest-wins rule",
     )
-    reason: str = Field(default="", description="Free text, stored on all rows")
+    reason: str = Field(default="", description="Free text, stored on every row")
+
+    @field_validator("weeks")
+    @classmethod
+    def _unique_weeks(cls, weeks: list[date]) -> list[date]:
+        if len(set(weeks)) != len(weeks):
+            raise ValueError("a Sunday may appear only once")
+        return weeks
 
 
 class ShutdownResult(BaseModel):
-    weeks: int = Field(description="Rows written (one per week in the range)")
+    weeks: int = Field(description="Rows written (one per named Sunday)")
 
 
 class StandingOut(BaseModel):

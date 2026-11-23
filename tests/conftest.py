@@ -8,6 +8,11 @@ executes db/schema.sql); every test gets its own fast clone of it
 Needs a PostgreSQL superuser DSN (the schema creates roles/extensions and the tamper tests
 disable triggers). Point TEST_ADMIN_DSN at your dev server, e.g. the Docker one:
     export TEST_ADMIN_DSN=postgresql://postgres:<password>@localhost:5432/postgres
+
+Logins are cluster-wide, not per database: db/schema.sql creates `labapp` with the password
+`change-me` only WHEN THE ROLE IS ABSENT, so a cluster that already has `labapp` keeps its own
+password. Export TEST_LABAPP_PASSWORD to match that cluster's `labapp` instead of changing it:
+    export TEST_LABAPP_PASSWORD='<your labapp password>'
 """
 
 from __future__ import annotations
@@ -35,7 +40,7 @@ from mesl_finance.shared.settings import Settings
 ADMIN_DSN = os.environ.get(
     "TEST_ADMIN_DSN", "postgresql://postgres:postgres@localhost:5432/postgres"
 )
-APP_ROLE_PASSWORD = "change-me"  # must match the labapp role created by db/schema.sql
+APP_ROLE_PASSWORD = os.environ.get("TEST_LABAPP_PASSWORD", "change-me")  # see the docstring
 ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
 OWNER_DSN_ENV_VAR = "MESL_ADMIN_DATABASE_URL"  # the only source alembic/env.py accepts
 TEMPLATE_DB = "mesl_test_template"

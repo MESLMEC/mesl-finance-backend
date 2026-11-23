@@ -11,15 +11,20 @@ What these tests pin (the domain API /code must provide):
 - `FeeRate(effective_from=..., amount=...)`: an immutable whole-BDT weekly rate
   (db/schema.sql:106-112), refusing a non-`int` amount with `ValidationFailed`
   (the D-047 strictness, message contains "whole");
-- `ShutdownRange(from_week=..., to_week=..., is_shutdown=True, reason="")`: an
-  immutable request for `set_shutdown()` (db/schema.sql:220-233), defaulting to a
-  shutdown with no reason.
+- `ShutdownWeeks(weeks=(...), is_shutdown=True, reason="")`: an immutable request
+  for `set_shutdown()` (db/schema.sql:220-233), holding the Sundays the caller NAMED
+  (issue #15 step 1 renames `ShutdownRange`; D-104 Q3=a is superseded), refusing an
+  EMPTY tuple with `ValidationFailed` (the user's call this session: an empty request
+  is a bug, not a no-op) and defaulting to a shutdown with no reason.
 
 Not tested here, on purpose (AGENTS.md section 5, D-076 Q3=a): the Sunday rule,
-`amount > 0`, the tenure floor, "to-week is before from-week" and the closed-tenure
-wall all stay PostgreSQL's (`fee_rates_effective_from_check`,
-`fee_rates_amount_check`, `rate_guard`, `set_shutdown`, `shutdown_guard`); none of
-them is duplicated in Python.
+`amount > 0`, the tenure floor and the closed-tenure wall all stay PostgreSQL's
+(`fee_rates_effective_from_check`, `fee_rates_amount_check`, `rate_guard`,
+`set_shutdown`, `shutdown_guard`); none of them is duplicated in Python. The
+duplicate-Sunday refusal is a request-shape rule and lives in the API schema
+(422 `validation_error`), not in this value object. The API refuses `weeks: []` as a
+request-shape 422 *before* this value object sees it; the domain guard is for any
+non-HTTP caller.
 
 The modules are imported lazily: ruff classifies an import of a module that does not
 exist yet as third-party, so a module-level import would have to be re-sorted the
@@ -58,8 +63,11 @@ def _fee_rate_class() -> Any:
     return vars(_fee_rate_module())["FeeRate"]
 
 
-def _shutdown_range_class() -> Any:
-    return vars(_shutdown_module())["ShutdownRange"]
+def _shutdown_weeks_class() -> Any:
+    try:
+        return vars(_shutdown_module())["ShutdownWeeks"]
+    except KeyError:
+        pytest.fail("src/mesl_finance/fees/domain/shutdown.py has no ShutdownWeeks yet")
 
 
 def test_fee_rate_holds_the_sunday_and_the_amount() -> None:
@@ -74,16 +82,19 @@ def test_fee_rate_refuses_a_non_whole_amount(amount: Any) -> None:
         _fee_rate_class()(effective_from=SUNDAY, amount=amount)
 
 
-def test_shutdown_range_defaults_to_a_shutdown_with_no_reason() -> None:
-    week = _shutdown_range_class()(from_week=SUNDAY, to_week=NEXT_SUNDAY)
-
-    assert (week.from_week, week.to_week) == (SUNDAY, NEXT_SUNDAY)
-    assert (week.is_shutdown, week.reason) == (True, "")
+def test_shutdown_weeks_refuse_an_empty_tuple() -> None:
+    with pytest.raises(ValidationFailed, match="at least one Sunday"):
+        _shutdown_weeks_class()(weeks=())
 
 
-def test_shutdown_range_carries_an_undo_and_its_reason() -> None:
-    week = _shutdown_range_class()(
-        from_week=SUNDAY, to_week=SUNDAY, is_shutdown=False, reason="was a mistake"
-    )
+def test_shutdown_weeks_default_to_a_shutdown_with_no_reason() -> None:
+    weeks = _shutdown_weeks_class()(weeks=(SUNDAY, NEXT_SUNDAY))
 
-    assert (week.is_shutdown, week.reason) == (False, "was a mistake")
+    assert weeks.weeks == (SUNDAY, NEXT_SUNDAY)
+    assert (weeks.is_shutdown, weeks.reason) == (True, "")
+
+
+def test_shutdown_weeks_carry_an_undo_and_its_reason() -> None:
+    weeks = _shutdown_weeks_class()(weeks=(SUNDAY,), is_shutdown=False, reason="was a mistake")
+
+    assert (weeks.is_shutdown, weeks.reason) == (False, "was a mistake")
