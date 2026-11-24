@@ -29,3 +29,18 @@ class ShutdownEventView:
     reason: str
     recorded_at: datetime
     recorded_by: str
+
+
+@dataclass(frozen=True)
+class ShutdownStateView:
+    """One currently shut week: the latest `shutdown_events` row of the open tenure.
+
+    The latest-wins rule and the open-tenure scope are PostgreSQL's
+    (db/schema.sql:117,177-183,594-595); this holds the API's answer only.
+    """
+
+    week_start: date
+    event_id: int
+    reason: str
+    recorded_at: datetime
+    recorded_by: str

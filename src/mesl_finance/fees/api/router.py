@@ -9,16 +9,18 @@ from mesl_finance.fees.api.schemas import (
     SetShutdownRequest,
     ShutdownEventOut,
     ShutdownResult,
+    ShutdownStateOut,
     StandingOut,
 )
 from mesl_finance.fees.application.create_fee_rate import CreateFeeRate, CreateFeeRateCommand
 from mesl_finance.fees.application.list_dues import ListDues
 from mesl_finance.fees.application.list_fee_rates import ListFeeRates
 from mesl_finance.fees.application.list_shutdown_events import ListShutdownEvents
+from mesl_finance.fees.application.list_shutdown_state import ListShutdownState
 from mesl_finance.fees.application.set_shutdown import SetShutdown, SetShutdownCommand
 from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRateView
-from mesl_finance.fees.domain.shutdown import ShutdownEventView
+from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownStateView
 from mesl_finance.shared.api.responses import problem_responses
 
 router = APIRouter(tags=["fees"])
@@ -42,6 +44,10 @@ def get_set_shutdown(request: Request) -> SetShutdown:
 
 def get_list_shutdown_events(request: Request) -> ListShutdownEvents:
     return cast(ListShutdownEvents, request.app.state.list_shutdown_events)
+
+
+def get_list_shutdown_state(request: Request) -> ListShutdownState:
+    return cast(ListShutdownState, request.app.state.list_shutdown_state)
 
 
 def _rate_out(view: FeeRateView) -> FeeRateOut:
@@ -73,6 +79,16 @@ def _event_out(view: ShutdownEventView) -> ShutdownEventOut:
         id=view.id,
         week_start=view.week_start,
         is_shutdown=view.is_shutdown,
+        reason=view.reason,
+        recorded_at=view.recorded_at,
+        recorded_by=view.recorded_by,
+    )
+
+
+def _state_out(view: ShutdownStateView) -> ShutdownStateOut:
+    return ShutdownStateOut(
+        week_start=view.week_start,
+        event_id=view.event_id,
         reason=view.reason,
         recorded_at=view.recorded_at,
         recorded_by=view.recorded_by,
@@ -153,10 +169,33 @@ async def get_shutdown_weeks(
     user: Annotated[str, Depends(current_actor)],
     list_shutdown_events: Annotated[ListShutdownEvents, Depends(get_list_shutdown_events)],
 ) -> list[ShutdownEventOut]:
-    """The raw event rows in `week_start`, id order — value received, not interpreted:
-    billing computes the per-week latest-wins state itself (7.2 Q6, D-104)."""
+    """The raw event rows in `week_start`, id order — value received, not interpreted.
+
+    The source is 7.2 Q6/D-104: a reopened week still lists its `is_shutdown=true` row
+    here. Use `GET /shutdown-weeks/state` for which weeks are shut now."""
     views = await list_shutdown_events(actor=user)
     return [_event_out(view) for view in views]
+
+
+@router.get(
+    "/shutdown-weeks/state",
+    summary="List currently shut weeks",
+    responses=problem_responses(401),
+)
+async def get_shutdown_state(
+    user: Annotated[str, Depends(current_actor)],
+    list_shutdown_state: Annotated[ListShutdownState, Depends(get_list_shutdown_state)],
+) -> list[ShutdownStateOut]:
+    """Which weeks are shut RIGHT NOW, in the open tenure, `week_start` order.
+
+    The latest `shutdown_events` row per week decides (max id, the schema's
+    latest-wins rule, db/schema.sql:117,594-595): a reopened week is absent, and
+    `reason`/`recorded_by` come from the newest row. Weeks of a closed tenure never
+    appear (`week_start >= open_tenure_start()`, db/schema.sql:177-183). The full
+    history stays at `GET /shutdown-weeks`; undo a mistake by naming the same Sunday
+    with `is_shutdown=false`."""
+    views = await list_shutdown_state(actor=user)
+    return [_state_out(view) for view in views]
 
 
 @router.get("/dues", summary="Who owes what", responses=problem_responses(401))

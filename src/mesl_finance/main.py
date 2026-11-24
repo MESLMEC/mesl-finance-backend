@@ -49,6 +49,7 @@ from mesl_finance.fees.application.create_fee_rate import CreateFeeRate
 from mesl_finance.fees.application.list_dues import ListDues
 from mesl_finance.fees.application.list_fee_rates import ListFeeRates
 from mesl_finance.fees.application.list_shutdown_events import ListShutdownEvents
+from mesl_finance.fees.application.list_shutdown_state import ListShutdownState
 from mesl_finance.fees.application.set_shutdown import SetShutdown
 from mesl_finance.fees.infrastructure.unit_of_work import SqlFeeUnitOfWork
 from mesl_finance.health.api.router import router as health_router
@@ -178,11 +179,11 @@ OPENAPI_TAGS = [
     {
         "name": "fees",
         "description": "The weekly rate (per member, whole BDT; a rate change only affects"
-        " future weeks, B-05), shutdown weeks (a national-vacation range that forgives whole"
-        " weeks, B-08 — undo a mistake by re-entering the same range with `is_shutdown=false`,"
-        " newest row wins), and `GET /dues`: every member, what they owe, credits, and when"
-        " arrears started. A member's fee payment is a deposit with source `weekly_fee`"
-        " (ledger tag)",
+        " future weeks, B-05), shutdown weeks (name each Sunday explicitly; a shutdown forgives"
+        " whole weeks, B-08 — undo a mistake by naming the same Sunday with `is_shutdown=false`,"
+        " newest row wins, and `GET /shutdown-weeks/state` answers which weeks are shut now),"
+        " and `GET /dues`: every member, what they owe, credits, and when arrears started. A"
+        " member's fee payment is a deposit with source `weekly_fee` (ledger tag)",
     },
     {
         "name": "assets",
@@ -307,6 +308,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.list_dues = ListDues(fee_unit_of_work)
     app.state.set_shutdown = SetShutdown(fee_unit_of_work)
     app.state.list_shutdown_events = ListShutdownEvents(fee_unit_of_work)
+    app.state.list_shutdown_state = ListShutdownState(fee_unit_of_work)
 
     def health_unit_of_work(actor: str) -> SqlHealthUnitOfWork:
         return SqlHealthUnitOfWork(engine, actor)

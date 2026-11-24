@@ -1,6 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from mesl_finance.fees.infrastructure.repository import SqlDuesRepository, SqlFeeRepository
+from mesl_finance.fees.infrastructure.repository import (
+    SqlDuesRepository,
+    SqlFeeRepository,
+    SqlShutdownStateRepository,
+)
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -9,3 +13,4 @@ class SqlFeeUnitOfWork(SqlUnitOfWork):
         super().__init__(engine, actor)
         self.fees = SqlFeeRepository(self)
         self.dues = SqlDuesRepository(self)
+        self.shutdown_state = SqlShutdownStateRepository(self)

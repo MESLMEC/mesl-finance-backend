@@ -75,6 +75,7 @@ EXPECTED_OPERATIONS: list[tuple[str, str]] = [
     ("GET", "/api/v1/members/{member_id}/periods"),
     ("GET", "/api/v1/reconciliation-status"),
     ("GET", "/api/v1/shutdown-weeks"),
+    ("GET", "/api/v1/shutdown-weeks/state"),
     ("GET", "/api/v1/tenures/{tenure_id}/asset-snapshots"),
     ("GET", "/api/v1/tenures/{tenure_id}/holding-snapshots"),
     ("GET", "/api/v1/tenures/{tenure_id}/member-snapshots"),

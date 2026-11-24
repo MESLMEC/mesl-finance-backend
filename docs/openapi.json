@@ -2564,6 +2564,46 @@
         "title": "ShutdownResult",
         "type": "object"
       },
+      "ShutdownStateOut": {
+        "properties": {
+          "event_id": {
+            "description": "The shutdown_events row that decided this week's state",
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "Why the week is shut ('durga puja'); free text",
+            "title": "Reason",
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "When that deciding row was recorded",
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "description": "Investing treasurer \u2014 the JWT subject",
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "week_start": {
+            "description": "The Sunday the week starts on",
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "event_id",
+          "reason",
+          "recorded_at",
+          "recorded_by"
+        ],
+        "title": "ShutdownStateOut",
+        "type": "object"
+      },
       "StandingOut": {
         "properties": {
           "balance": {
@@ -10064,7 +10104,7 @@
     },
     "/api/v1/shutdown-weeks": {
       "get": {
-        "description": "The raw event rows in `week_start`, id order \u2014 value received, not interpreted:\nbilling computes the per-week latest-wins state itself (7.2 Q6, D-104).",
+        "description": "The raw event rows in `week_start`, id order \u2014 value received, not interpreted.\n\nThe source is 7.2 Q6/D-104: a reopened week still lists its `is_shutdown=true` row\nhere. Use `GET /shutdown-weeks/state` for which weeks are shut now.",
         "operationId": "get_shutdown_weeks_api_v1_shutdown_weeks_get",
         "responses": {
           "200": {
@@ -10304,6 +10344,77 @@
           }
         ],
         "summary": "Forgive weeks (shutdown)",
+        "tags": [
+          "fees"
+        ]
+      }
+    },
+    "/api/v1/shutdown-weeks/state": {
+      "get": {
+        "description": "Which weeks are shut RIGHT NOW, in the open tenure, `week_start` order.\n\nThe latest `shutdown_events` row per week decides (max id, the schema's\nlatest-wins rule, db/schema.sql:117,594-595): a reopened week is absent, and\n`reason`/`recorded_by` come from the newest row. Weeks of a closed tenure never\nappear (`week_start >= open_tenure_start()`, db/schema.sql:177-183). The full\nhistory stays at `GET /shutdown-weeks`; undo a mistake by naming the same Sunday\nwith `is_shutdown=false`.",
+        "operationId": "get_shutdown_state_api_v1_shutdown_weeks_state_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShutdownStateOut"
+                  },
+                  "title": "Response Get Shutdown State Api V1 Shutdown Weeks State Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "description": "RFC 9457 problem+json: what failed, its machine code, what to do",
+                  "properties": {
+                    "code": {
+                      "description": "Machine name of the problem class: invalid_token, not_found, unique, rule_violation, unknown_reference, validation_failed, validation_error, date_before_tenure, no_open_tenure, invalid_credentials, http_error",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "description": "What happened and what to do; names the offending id or constraint",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "The HTTP status of the answer",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "description": "Short human title of the problem class",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "The problem type URN, e.g. urn:mesl:problem:rule_violation",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Unauthenticated: the bearer JWT is missing, expired or forged."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List currently shut weeks",
         "tags": [
           "fees"
         ]
@@ -11486,7 +11597,7 @@
       "name": "members"
     },
     {
-      "description": "The weekly rate (per member, whole BDT; a rate change only affects future weeks, B-05), shutdown weeks (a national-vacation range that forgives whole weeks, B-08 \u2014 undo a mistake by re-entering the same range with `is_shutdown=false`, newest row wins), and `GET /dues`: every member, what they owe, credits, and when arrears started. A member's fee payment is a deposit with source `weekly_fee` (ledger tag)",
+      "description": "The weekly rate (per member, whole BDT; a rate change only affects future weeks, B-05), shutdown weeks (name each Sunday explicitly; a shutdown forgives whole weeks, B-08 \u2014 undo a mistake by naming the same Sunday with `is_shutdown=false`, newest row wins, and `GET /shutdown-weeks/state` answers which weeks are shut now), and `GET /dues`: every member, what they owe, credits, and when arrears started. A member's fee payment is a deposit with source `weekly_fee` (ledger tag)",
       "name": "fees"
     },
     {

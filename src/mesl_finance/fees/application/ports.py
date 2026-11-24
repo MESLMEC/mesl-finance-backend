@@ -2,7 +2,11 @@ from typing import Protocol
 
 from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRate, FeeRateView
-from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownWeeks
+from mesl_finance.fees.domain.shutdown import (
+    ShutdownEventView,
+    ShutdownStateView,
+    ShutdownWeeks,
+)
 from mesl_finance.shared.ports import UnitOfWork
 
 
@@ -44,3 +48,18 @@ class DuesUnitOfWork(UnitOfWork, Protocol):
 
     @property
     def dues(self) -> DuesRepository: ...
+
+
+class ShutdownStateRepository(Protocol):
+    """What the current-state read needs; the history slice keeps its own port."""
+
+    async def list_current(self) -> list[ShutdownStateView]:
+        """The weeks currently shut in the open tenure, in week_start order."""
+        ...
+
+
+class ShutdownStateUnitOfWork(UnitOfWork, Protocol):
+    """The current-state read's transaction scope."""
+
+    @property
+    def shutdown_state(self) -> ShutdownStateRepository: ...

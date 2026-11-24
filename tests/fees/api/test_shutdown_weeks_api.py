@@ -1,12 +1,26 @@
-"""API tests for shutdown weeks (issue #15, step 1 of 2).
+"""API tests for shutdown weeks (issue #15, steps 1 and 2).
 
-Approved brief (this session) reshapes the write so the caller NAMES the Sundays
-instead of sending a range: D-104 Q3=a ("body {from_week, to_week, ...}") is
-superseded, D-104 Q6=a (the raw history list) is untouched and its state read is
-step 2. Approved answers: (Q1=a) empty/duplicate refusals are pydantic's 422
+Step 1 (D-188) reshaped the write so the caller NAMES the Sundays instead of
+sending a range: D-104 Q3=a ("body {from_week, to_week, ...}") is superseded.
+Approved answers: (Q1=a) empty/duplicate refusals are pydantic's 422
 `validation_error`; (Q3=a) the `to-week is before from-week` test is deleted because
 that input no longer exists; (Q4=a) the domain value object is renamed
 `ShutdownWeeks`; (Q5=a) the commit says `Refs #15`.
+
+Step 2 (approved this session: "go with your suggestions") adds the authoritative
+state read, an ADDITIVE route (D-104 Q6=a's deferred per-week view):
+
+    GET  /api/v1/shutdown-weeks/state  200  [ShutdownStateOut] in week_start order
+         ShutdownStateOut = {"week_start","event_id","reason","recorded_at",
+         "recorded_by"}
+         - the LATEST `shutdown_events` row per week decides (max id, the schema's
+           own latest-wins rule, db/schema.sql:117,594-595);
+         - a week whose latest row is `is_shutdown=false` is absent (reopened);
+         - OPEN TENURE ONLY (`week_start >= open_tenure_start()`,
+           db/schema.sql:54-60,177-183): a closed tenure's weeks never appear;
+         - `[]` when nothing in the open tenure is shut.
+         Brief suggestions used: Q1=a `event_id`; Q2=a open tenure only; Q3=a the
+         SQL calls `open_tenure_start()`; Q4=a own port `.shutdown_state`.
 
 Contract this file pins:
     POST /api/v1/shutdown-weeks  201  {"weeks": n}
@@ -21,7 +35,7 @@ Contract this file pins:
            written, so a half-applied list can never exist.
     GET  /api/v1/shutdown-weeks  200  [ShutdownEventOut] in week_start, id order
          (history, NOT state: a reopened week still lists its `is_shutdown=true` row;
-         the state read is step 2)
+         the state read below answers the current state)
 
 ShutdownEventOut = {"id","week_start","is_shutdown","reason","recorded_at",
 "recorded_by"}; `recorded_by` is the JWT actor, never a body field.
@@ -56,7 +70,7 @@ Library APIs used, verified in installed source or by probe:
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from httpx import AsyncClient
@@ -64,6 +78,7 @@ from httpx import AsyncClient
 from tests.conftest import USERNAME, TestDb
 
 EVENT_FIELDS = {"id", "week_start", "is_shutdown", "reason", "recorded_at", "recorded_by"}
+STATE_FIELDS = {"week_start", "event_id", "reason", "recorded_at", "recorded_by"}
 
 
 def assert_problem(response: Any, status: int, code: str) -> None:
@@ -122,6 +137,10 @@ async def events(db: TestDb) -> list[dict[str, Any]]:
 async def event_count(db: TestDb) -> int:
     count: int = await db.owner.fetchval("SELECT count(*) FROM shutdown_events")
     return count
+
+
+async def state(client: AsyncClient, auth: dict[str, str]) -> Any:
+    return await client.get("/api/v1/shutdown-weeks/state", headers=auth)
 
 
 # ---- write ------------------------------------------------------------------
@@ -312,5 +331,103 @@ async def test_list_shutdown_events_without_a_token_is_401(
     client: AsyncClient, lab: TestDb
 ) -> None:
     response = await client.get("/api/v1/shutdown-weeks")
+
+    assert_problem(response, 401, "invalid_token")
+
+
+# ---- state (step 2) ---------------------------------------------------------
+
+
+async def test_state_lists_only_currently_shut_weeks(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    s0 = await sunday(lab)
+    first, second = s0 + timedelta(days=7), s0 + timedelta(days=14)
+    assert (await shut(client, auth, first, second)).status_code == 201
+    assert (await shut(client, auth, first, is_shutdown=False)).status_code == 201
+
+    response = await state(client, auth)
+
+    assert response.status_code == 200
+    assert [item["week_start"] for item in response.json()] == [second.isoformat()]
+
+
+async def test_state_returns_the_latest_event_per_week(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    s0 = await sunday(lab)
+    week = s0 + timedelta(days=14)
+    assert (await shut(client, auth, week, reason="durga puja")).status_code == 201
+    reopened = await shut(client, auth, week, is_shutdown=False, reason="was a mistake")
+    assert reopened.status_code == 201
+    assert (await shut(client, auth, week, reason="durga puja again")).status_code == 201
+    stored = await lab.owner.fetchrow(
+        """
+        SELECT id, recorded_at FROM shutdown_events
+        WHERE week_start = $1 ORDER BY id DESC LIMIT 1
+        """,
+        week,
+    )
+    assert stored is not None
+
+    response = await state(client, auth)
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    item = items[0]
+    assert set(item) == STATE_FIELDS
+    assert item["week_start"] == week.isoformat()
+    assert item["event_id"] == stored["id"]
+    assert item["reason"] == "durga puja again"
+    assert item["recorded_by"] == USERNAME
+    assert datetime.fromisoformat(item["recorded_at"]) == stored["recorded_at"]
+
+
+async def test_state_is_ordered_by_week_start(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    s0 = await sunday(lab)
+    first, second, third = (s0 + timedelta(days=days) for days in (7, 21, 35))
+    assert (await shut(client, auth, third, first, second)).status_code == 201
+
+    response = await state(client, auth)
+
+    assert response.status_code == 200
+    assert [item["week_start"] for item in response.json()] == [
+        first.isoformat(),
+        second.isoformat(),
+        third.isoformat(),
+    ]
+
+
+async def test_state_excludes_closed_tenure_weeks(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    s0 = await sunday(lab)
+    old_week = s0 - timedelta(days=7)
+    assert (await shut(client, auth, old_week)).status_code == 201
+    # Hand over: tenure 2 opens on s0+3, so old_week belongs to the closed tenure.
+    await lab.owner.execute("SELECT close_tenure($1::date + 2, $2, 'T2')", s0, USERNAME)
+    new_week = s0 + timedelta(days=7)
+    assert (await shut(client, auth, new_week)).status_code == 201
+
+    response = await state(client, auth)
+
+    assert response.status_code == 200
+    assert [item["week_start"] for item in response.json()] == [new_week.isoformat()]
+
+
+async def test_state_is_empty_when_nothing_is_shut(
+    client: AsyncClient, lab: TestDb, auth: dict[str, str]
+) -> None:
+    response = await state(client, auth)
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+async def test_state_without_a_token_is_401(client: AsyncClient, lab: TestDb) -> None:
+    response = await client.get("/api/v1/shutdown-weeks/state")
 
     assert_problem(response, 401, "invalid_token")

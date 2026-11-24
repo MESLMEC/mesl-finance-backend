@@ -2,7 +2,11 @@ from typing import Any
 
 from mesl_finance.fees.domain.dues import StandingView
 from mesl_finance.fees.domain.fee_rate import FeeRate, FeeRateView
-from mesl_finance.fees.domain.shutdown import ShutdownEventView, ShutdownWeeks
+from mesl_finance.fees.domain.shutdown import (
+    ShutdownEventView,
+    ShutdownStateView,
+    ShutdownWeeks,
+)
 from mesl_finance.shared.infrastructure.database import SqlUnitOfWork
 
 
@@ -24,6 +28,16 @@ def _event_view(row: Any) -> ShutdownEventView:
         reason=str(row[3]),
         recorded_at=row[4],
         recorded_by=str(row[5]),
+    )
+
+
+def _state_view(row: Any) -> ShutdownStateView:
+    return ShutdownStateView(
+        week_start=row[0],
+        event_id=int(row[1]),
+        reason=str(row[2]),
+        recorded_at=row[3],
+        recorded_by=str(row[4]),
     )
 
 
@@ -84,6 +98,36 @@ class SqlFeeRepository:
             """
         )
         return [_event_view(row) for row in result.all()]
+
+
+class SqlShutdownStateRepository:
+    """The current shutdown state (issue #15 step 2): latest row per week, open tenure.
+
+    The latest-wins subquery is the schema's own rule (db/schema.sql:594-595), and
+    ``open_tenure_start()`` (:54-60) is the same wall ``shutdown_guard`` (:177-183)
+    uses, so a closed tenure's weeks can never appear.
+    """
+
+    def __init__(self, uow: SqlUnitOfWork) -> None:
+        self._uow = uow
+
+    async def list_current(self) -> list[ShutdownStateView]:
+        result = await self._uow.execute(
+            """
+            SELECT s.week_start, s.id, s.reason, s.recorded_at, s.recorded_by
+            FROM shutdown_events s
+            WHERE s.week_start >= open_tenure_start()
+              AND s.is_shutdown
+              AND s.id = (
+                  SELECT latest.id FROM shutdown_events latest
+                  WHERE latest.week_start = s.week_start
+                  ORDER BY latest.id DESC
+                  LIMIT 1
+              )
+            ORDER BY s.week_start
+            """
+        )
+        return [_state_view(row) for row in result.all()]
 
 
 def _standing_view(row: Any) -> StandingView:

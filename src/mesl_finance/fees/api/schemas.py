@@ -52,6 +52,14 @@ class ShutdownResult(BaseModel):
     weeks: int = Field(description="Rows written (one per named Sunday)")
 
 
+class ShutdownStateOut(BaseModel):
+    week_start: date = Field(description="The Sunday the week starts on")
+    event_id: int = Field(description="The shutdown_events row that decided this week's state")
+    reason: str = Field(description="Why the week is shut ('durga puja'); free text")
+    recorded_at: datetime = Field(description="When that deciding row was recorded")
+    recorded_by: str = Field(description="Investing treasurer — the JWT subject")
+
+
 class StandingOut(BaseModel):
     member_id: int = Field(description="The member")
     member_name: str = Field(description="Shown in the report")

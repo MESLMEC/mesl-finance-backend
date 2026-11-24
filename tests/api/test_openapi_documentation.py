@@ -97,6 +97,7 @@ EXPECTED_ERRORS: dict[tuple[str, str], list[int]] = {
     ("GET", "/api/v1/fee-rates"): [401],
     ("POST", "/api/v1/shutdown-weeks"): [401, 409, 422],
     ("GET", "/api/v1/shutdown-weeks"): [401],
+    ("GET", "/api/v1/shutdown-weeks/state"): [401],
     ("GET", "/api/v1/dues"): [401],
     ("POST", "/api/v1/assets"): [401, 409, 422],
     ("GET", "/api/v1/assets"): [401],
